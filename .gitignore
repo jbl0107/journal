@@ -1,0 +1,4 @@
+.env
+db_apuntes.py
+__pycache__
+journal-venv
