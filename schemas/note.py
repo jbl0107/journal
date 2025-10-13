@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-from .user import UserCreate, UserDb, UserRead, UserUpdate
+from .user import UserRead
 
 
 class NoteBase(BaseModel):
