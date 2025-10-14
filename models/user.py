@@ -1,7 +1,13 @@
+# Debe ir primero; convierte las anotaciones en strings, permitiendo referencias a clases aún no definidas
+from __future__ import annotations
+
 from sqlalchemy import Integer, String, Boolean, CheckConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base #el . (importacion relativa) es igual a paquete actual. Python sabe que debe buscar dentro de models/
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING: #false en tiempo de ejecucion
+    from .note import Note  # Import solo para el type checker; evita warnings y previene import circular en runtime
 
 
 class User(Base):
@@ -15,6 +21,14 @@ class User(Base):
     age:Mapped[int] = mapped_column(Integer, nullable=False)
     password:Mapped[str] = mapped_column(String, nullable=False)
     is_active:Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    # esto es a nivel de orm, no de esquema de db
+    notes:Mapped[list[Note]] = relationship(
+        back_populates='user', 
+        cascade='all, delete-orphan', # ORM se encarga si el delete se hace desde Python
+        # DB se encarga si nos saltamos el orm e intentamos borrar directamente(tiene que estar el ondelete para q funcione)
+        passive_deletes=True 
+        )
 
 
     #metodo que define como se ve en consola el objeto al imprimirlo o inspeccionarlo
