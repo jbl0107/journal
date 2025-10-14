@@ -5,7 +5,7 @@ from .user import UserRead
 
 class NoteBase(BaseModel):
     title:str = Field(min_length=2, max_length=20)
-    description:str
+    description:str = Field(max_length=(150))
 
 
 class NoteRead(NoteBase):
@@ -17,7 +17,7 @@ class NoteCreate(NoteBase):
 
 class NoteUpdate(BaseModel):
     title:Optional[str] = Field(None, max_length=20)
-    description:Optional[str] = None
+    description:Optional[str] = Field(None, max_length=(150))
 
 
 class NoteDb(NoteCreate):
