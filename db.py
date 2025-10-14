@@ -22,6 +22,10 @@ engine = create_engine(f'postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}
 
 SessionLocal = sessionmaker(bind=engine)
 
+def get_db():
+    with SessionLocal() as session:
+        yield session
+
 
 def main():
     # Base.metadata.drop_all(engine)
