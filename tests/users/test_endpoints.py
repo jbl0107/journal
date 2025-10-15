@@ -46,11 +46,11 @@ def test_get_all_users_exists():
 
 @pytest.mark.parametrize('fake_users', (
     [],
-    [UserRead(first_name='Pepe', last_name = 'ultmo', username = 'pep_ul', age  = 24)],
+    [UserRead(id=1, first_name='Pepe', last_name = 'ultmo', username = 'pep_ul', age  = 24)],
     [
-        UserRead(first_name='Pepe', last_name = 'ultmo', username = 'pep_ul', age  = 24),
-        UserRead(first_name='mauel', last_name = 'tto', username = 'm_t', age  = 20),
-        UserRead(first_name='rup', last_name = 'qq', username = 'repq', age  = 25)
+        UserRead(id=1, first_name='Pepe', last_name = 'ultmo', username = 'pep_ul', age  = 24),
+        UserRead(id=2, first_name='mauel', last_name = 'tto', username = 'm_t', age  = 20),
+        UserRead(id=3, first_name='rup', last_name = 'qq', username = 'repq', age  = 25)
     ]
 ), ids=['empty', 'single_user', 'multiple_users'])
 def test_get_all_users_data(mock_db_session, fake_users):
