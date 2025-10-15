@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from typing import Optional
 
 class UserRead(BaseModel):
@@ -25,7 +25,6 @@ class UserDb(UserCreate):
     id:int
     is_active:bool = True
 
-    class Config:
-        orm_mode = True # se le dice a Pydantic que acepte objetos ORM y lea los atributos directamente
+    model_config = ConfigDict(from_atributes=True) # se le dice a Pydantic que acepte objetos ORM y lea los atributos directamente
 
     
