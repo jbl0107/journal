@@ -27,6 +27,7 @@ class Note(Base):
     
     __table_args__ = (
         CheckConstraint('char_length(title) >= 2', 'min_title'),
+        CheckConstraint('char_length(description) >= 5', 'min_des')
     )
 
 
