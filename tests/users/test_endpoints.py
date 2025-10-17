@@ -3,13 +3,16 @@ from fastapi.testclient import TestClient
 from fastapi import status
 from unittest.mock import Mock
 
-from schemas.user import UserRead 
+from schemas.user import UserRead
+from models.user import User
 
 from main import app
 from db import get_db
 
 
 client = TestClient(app)
+
+
 
 @pytest.fixture
 def mock_db_session():
@@ -24,10 +27,8 @@ def mock_db_session():
     def override_get_db():
         yield mock_session
 
-    # Sobrescribimos la dependencia `get_db` para que el endpoint use
-    # nuestra sesión mock durante el test, evitando tocar la base de datos real.
-    # Esto solo afecta a este test en memoria y se limpia al final con `.pop()` para
-    # que no interfiera a otros tests
+    # Sobrescribimos la dependencia `get_db` para que el endpoint use nuestra sesión mock durante el test, evitando tocar la BD.
+    # Esto solo afecta a este test en memoria y se limpia al final con `.pop()` para que no interfiera a otros tests
     app.dependency_overrides[get_db] = override_get_db
 
     yield mock_session
@@ -35,22 +36,30 @@ def mock_db_session():
     app.dependency_overrides.pop(get_db, None)
       
 
-def test_get_all_users_exists():
+
+# TODO: poner mock_db_session.scalars.return_value.all.return_value devolviendo las 3 listas del parametrize en un fixture 
+# y pasarlo a test_get_all_users_exists,test_get_all_users_data y al que le haga falta
+
+
+def test_get_all_users_exists(mock_db_session):
     '''
     Test básico para asegurar que el endpoint `/users` responde 200 OK.
     No valida contenido, solo disponibilidad.
     '''
+    mock_db_session.scalars.return_value.all.return_value = [User(id=1, first_name='Pepe', last_name = 'ultmo', username = 'pep_ul', age  = 24)]
     response = client.get('/users')
     assert response.status_code == status.HTTP_200_OK
 
 
+
+
 @pytest.mark.parametrize('fake_users', (
     [],
-    [UserRead(id=1, first_name='Pepe', last_name = 'ultmo', username = 'pep_ul', age  = 24)],
+    [User(id=1, first_name='Pepe', last_name = 'ultmo', username = 'pep_ul', age  = 24)],
     [
-        UserRead(id=1, first_name='Pepe', last_name = 'ultmo', username = 'pep_ul', age  = 24),
-        UserRead(id=2, first_name='mauel', last_name = 'tto', username = 'm_t', age  = 20),
-        UserRead(id=3, first_name='rup', last_name = 'qq', username = 'repq', age  = 25)
+        User(id=1, first_name='Pepe', last_name = 'ultmo', username = 'pep_ul', age  = 24),
+        User(id=2, first_name='mauel', last_name = 'tto', username = 'm_t', age  = 20),
+        User(id=3, first_name='rup', last_name = 'qq', username = 'repq', age  = 25)
     ]
 ), ids=['empty', 'single_user', 'multiple_users'])
 def test_get_all_users_data(mock_db_session, fake_users):
@@ -62,5 +71,28 @@ def test_get_all_users_data(mock_db_session, fake_users):
     mock_db_session.scalars.return_value.all.return_value = fake_users
 
     response = client.get('/users')
+    assert response.json() == [UserRead.model_validate(fu).model_dump() for fu in fake_users]
+
+
+
+
+def test_get_by_id_ok(mock_db_session):
+    '''
+    Test unitario básico para validar que el endpoint get_by_id responde 200 OK
+    cuando el usuario con el id especificado existe
+    '''
+    mock_db_session.scalar.return_value = User(id=1, first_name='Pepe', last_name = 'ultmo', username = 'pep_ul', age  = 24)
+    response = client.get(f'/users/{1}')
     assert response.status_code == status.HTTP_200_OK
-    assert response.json() == [fu.model_dump() for fu in fake_users]
+
+
+def test_get_by_id_not_found(mock_db_session):
+    '''
+    Test unitario básico para validar que el endpoint get_by_id responde 404 NOT FOUND
+    cuando no existe el usuario con el id especificado
+    '''
+    mock_db_session.scalar.return_value = None
+    response = client.get(f'/users/{11}')
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
