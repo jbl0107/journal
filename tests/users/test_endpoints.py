@@ -34,26 +34,10 @@ def mock_db_session():
     yield mock_session
 
     app.dependency_overrides.pop(get_db, None)
-      
-
-
-# TODO: poner mock_db_session.scalars.return_value.all.return_value devolviendo las 3 listas del parametrize en un fixture 
-# y pasarlo a test_get_all_users_exists,test_get_all_users_data y al que le haga falta
-
-
-def test_get_all_users_exists(mock_db_session):
-    '''
-    Test básico para asegurar que el endpoint `/users` responde 200 OK.
-    No valida contenido, solo disponibilidad.
-    '''
-    mock_db_session.scalars.return_value.all.return_value = [User(id=1, first_name='Pepe', last_name = 'ultmo', username = 'pep_ul', age  = 24)]
-    response = client.get('/users')
-    assert response.status_code == status.HTTP_200_OK
 
 
 
-
-@pytest.mark.parametrize('fake_users', (
+@pytest.fixture(params=[
     [],
     [User(id=1, first_name='Pepe', last_name = 'ultmo', username = 'pep_ul', age  = 24)],
     [
@@ -61,17 +45,30 @@ def test_get_all_users_exists(mock_db_session):
         User(id=2, first_name='mauel', last_name = 'tto', username = 'm_t', age  = 20),
         User(id=3, first_name='rup', last_name = 'qq', username = 'repq', age  = 25)
     ]
-), ids=['empty', 'single_user', 'multiple_users'])
-def test_get_all_users_data(mock_db_session, fake_users):
+], ids=['empty', 'single_user', 'multiple_users'])
+def user_list(mock_db_session, request):
+    mock_db_session.scalars.return_value.all.return_value = request.param
+    return request.param
+
+
+def test_get_all_users_exists(user_list):
+    '''
+    Test básico para asegurar que el endpoint `/users` responde 200 OK.
+    No valida contenido, solo disponibilidad.
+    '''
+    
+    response = client.get('/users')
+    assert response.status_code == status.HTTP_200_OK
+
+
+
+def test_get_all_users_data(user_list):
     """
     Test unitario del endpoint `/users` usando una sesión mock.
     - Valida que la respuesta contenga exactamente los datos esperados.
     """
-
-    mock_db_session.scalars.return_value.all.return_value = fake_users
-
     response = client.get('/users')
-    assert response.json() == [UserRead.model_validate(fu).model_dump() for fu in fake_users]
+    assert response.json() == [UserRead.model_validate(fu).model_dump() for fu in user_list]
 
 
 
