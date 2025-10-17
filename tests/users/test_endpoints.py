@@ -13,7 +13,7 @@ from db import get_db
 client = TestClient(app)
 
 
-
+### FIXTURES ###
 @pytest.fixture
 def mock_db_session():
     ''' 
@@ -39,16 +39,39 @@ def mock_db_session():
 
 @pytest.fixture(params=[
     [],
-    [User(id=1, first_name='Pepe', last_name = 'ultmo', username = 'pep_ul', age  = 24)],
+    [User(id=1, first_name='Pepe', last_name = 'Rodriguez', username = 'pep_ul', age  = 24)],
     [
-        User(id=1, first_name='Pepe', last_name = 'ultmo', username = 'pep_ul', age  = 24),
-        User(id=2, first_name='mauel', last_name = 'tto', username = 'm_t', age  = 20),
-        User(id=3, first_name='rup', last_name = 'qq', username = 'repq', age  = 25)
+        User(id=1, first_name='Pepe', last_name = 'Rodriguez', username = 'pep_ul', age  = 24),
+        User(id=2, first_name='Manuel', last_name = 'Quintero', username = 'quintM', age  = 20),
+        User(id=3, first_name='Rodrigo', last_name = 'Goes', username = 'rgoes', age  = 25)
     ]
 ], ids=['empty', 'single_user', 'multiple_users'])
 def user_list(mock_db_session, request):
+    '''
+    Fixture que prepara a la sesión mockeada para que tenga un valor al llamar a su metodo
+    "scalars.all". Se devuelve el resultado para poder utilizarlo en el test correspondiente
+    y poder hacer comparaciones
+    '''
     mock_db_session.scalars.return_value.all.return_value = request.param
     return request.param
+
+
+@pytest.fixture(params=[
+    User(id=1, first_name='Pepe', last_name = 'Rodriguez', username = 'pep_ul', age  = 24),
+    User(id=3, first_name='Rodrigo', last_name = 'Goes', username = 'rgoes', email='rgoes@gmail.com', age  = 25)
+], ids=['pep_ul', 'rgoes'])
+def user(mock_db_session, request):
+    '''
+    Fixture que prepara a la sesión mockeada para que tenga un valor al llamar a su metodo
+    "scalar". Se devuelve el resultado para poder utilizarlo en el test correspondiente
+    y poder hacer comparaciones
+    '''
+    mock_db_session.scalar.return_value = request.param
+    return request.param
+
+### FIN FIXTURES ###
+
+
 
 
 def test_get_all_users_exists(user_list):
@@ -72,15 +95,21 @@ def test_get_all_users_data(user_list):
 
 
 
-
-def test_get_by_id_ok(mock_db_session):
+def test_get_by_id_ok(user):
     '''
     Test unitario básico para validar que el endpoint get_by_id responde 200 OK
     cuando el usuario con el id especificado existe
     '''
-    mock_db_session.scalar.return_value = User(id=1, first_name='Pepe', last_name = 'ultmo', username = 'pep_ul', age  = 24)
-    response = client.get(f'/users/{1}')
+    response = client.get(f'/users/{user.id}')
     assert response.status_code == status.HTTP_200_OK
+
+
+def test_get_by_id_ok_data(user):
+    '''
+    Test unitario que valida el formato de los datos 
+    '''
+    response = client.get(f'/users/{user.id}')
+    assert response.json() == UserRead.model_validate(user).model_dump()
 
 
 def test_get_by_id_not_found(mock_db_session):
@@ -91,5 +120,3 @@ def test_get_by_id_not_found(mock_db_session):
     mock_db_session.scalar.return_value = None
     response = client.get(f'/users/{11}')
     assert response.status_code == status.HTTP_404_NOT_FOUND
-
-
