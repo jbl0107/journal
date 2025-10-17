@@ -8,6 +8,7 @@ class UserBase(BaseModel):
     username:str = Field(min_length=3, max_length=20)
     email:Optional[EmailStr] = None
     age:int = Field(gt=0, lt=100)
+    
     model_config = ConfigDict(from_attributes=True) # se le dice a Pydantic que acepte objetos ORM y lea los atributos directamente
 
 class UserRead(UserBase):

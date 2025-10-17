@@ -26,7 +26,7 @@ class User(Base):
     notes:Mapped[list[Note]] = relationship(
         back_populates='user', 
         cascade='all, delete-orphan', # ORM se encarga si el delete se hace desde Python
-        # DB se encarga si nos saltamos el orm e intentamos borrar directamente(tiene que estar el ondelete para q funcione)
+        # DB se encarga si nos saltamos el orm e intentamos borrar directamente (tiene que estar el ondelete para q funcione)
         passive_deletes=True 
         )
 
