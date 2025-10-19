@@ -5,7 +5,7 @@ from typing import Optional
 class UserBase(BaseModel):
     first_name:str = Field(min_length=2, max_length=25)
     last_name:str = Field(min_length=2, max_length=30)
-    username:str = Field(min_length=3, max_length=20)
+    username:str = Field(min_length=3, max_length=20, pattern=r'^\S+$')
     email:Optional[EmailStr] = None
     age:int = Field(gt=0, lt=100)
     
