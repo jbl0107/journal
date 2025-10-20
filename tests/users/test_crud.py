@@ -11,11 +11,15 @@ from models.note import Note  # Necesario en runtime para que SQLAlchemy resuelv
 # en memoria al crear el mapper de User. Esto asegura que la relación notes funcione correctamente durante los tests.
 
 
-## FIXTURE ##
+## FIXTURES ##
 @pytest.fixture
 def user():
     return User(first_name='Pepe', last_name = 'Ruiz', username = 'rai17', age  = 24, password='12345678')
 
+
+@pytest.fixture
+def magic_mock_session():
+    return MagicMock(spec=Session)
 
 ## FIN FIXTURE ##
 
@@ -87,16 +91,15 @@ def test_get_user_by_id(user, subtests): # subtests -> plugin detectado auto. po
 
 
 
-def test_create_user_ok(user, subtests):
+def test_create_user_ok(magic_mock_session, user, subtests):
     '''
     Test unitario que comprueba el funcionamiento de la función CRUD create_user
     en un caso exitoso (inserción correcta de un nuevo usuario).
     '''
-    mock_session = MagicMock(spec=Session)
     
-    result = create_user(UserCreate.model_validate(user), mock_session)
+    result = create_user(UserCreate.model_validate(user), magic_mock_session)
 
-    called_user:User = mock_session.add.call_args.args[0]
+    called_user:User = magic_mock_session.add.call_args.args[0]
 
     fields = ['first_name', 'last_name', 'username', 'age', 'password']
 
@@ -111,74 +114,70 @@ def test_create_user_ok(user, subtests):
             assert getattr(result, field) == getattr(user, field)
     
     with subtests.test('add called once'):
-        mock_session.add.assert_called_once()
+        magic_mock_session.add.assert_called_once()
 
     with subtests.test('begin called once'):
-        mock_session.begin.assert_called_once()
+        magic_mock_session.begin.assert_called_once()
 
 
 
-def test_create_user_error(user):
+def test_create_user_error(magic_mock_session, user):
     '''
     Test unitario que comprueba el comportamiento de la función CRUD create_user
     cuando se intenta insertar un usuario con un username que ya existe
     (violación de la restricción de unicidad).
     '''
 
-    mock_session = MagicMock(spec=Session)
-
     mock_e_orig = Mock()
     mock_e_orig.diag.constraint_name = 'users_username_key'
-    mock_session.add.side_effect = IntegrityError(None, None, mock_e_orig) # cada vez que alguien llame a add, lanza esta exc
+    magic_mock_session.add.side_effect = IntegrityError(None, None, mock_e_orig) # cada vez que alguien llame a add, lanza esta exc
 
     with pytest.raises(UserAlreadyExists):
-        create_user(user, mock_session)
+        create_user(user, magic_mock_session)
 
 
 
-def test_delete_user_ok(user, subtests):
+def test_delete_user_ok(magic_mock_session, user, subtests):
     '''
     Test unitario que prueba el borrado de
     un usuario registrado en el sistema
     '''
     
-    mock_session = MagicMock(spec=Session) # mock sujeto a condiciones de Session. Mas estricto y seguro
-    mock_session.get.return_value = user
+    magic_mock_session.get.return_value = user
 
     user_id = 1
-    result = delete_user(mock_session, user_id)
+    result = delete_user(magic_mock_session, user_id)
     
     with subtests.test('get called once with'):
-        mock_session.get.assert_called_once_with(User, user_id)
+        magic_mock_session.get.assert_called_once_with(User, user_id)
 
     with subtests.test('begin and delete called once'):
-        mock_session.begin.assert_called_once()
-        mock_session.delete.assert_called_once_with(user)
+        magic_mock_session.begin.assert_called_once()
+        magic_mock_session.delete.assert_called_once_with(user)
 
     with subtests.test('data returned'):
         assert result is user 
 
 
-def test_delete_user_none(subtests):
+def test_delete_user_none(magic_mock_session, subtests):
     '''
     Test unitario que prueba el intento de borrado
     de un usuario no registrado en el sistema
     '''
     
-    mock_session = MagicMock(spec=Session)
-    mock_session.get.return_value = None
+    magic_mock_session.get.return_value = None
 
     user_id = 111
-    result = delete_user(mock_session, user_id)
+    result = delete_user(magic_mock_session, user_id)
 
     with subtests.test('get called once with'):
-        mock_session.get.assert_called_once_with(User, user_id)
+        magic_mock_session.get.assert_called_once_with(User, user_id)
 
     with subtests.test('begin called'):
-        mock_session.begin.assert_called_once()
+        magic_mock_session.begin.assert_called_once()
 
     with subtests.test('delete not called'):
-        mock_session.delete.assert_not_called()
+        magic_mock_session.delete.assert_not_called()
 
     with subtests.test('data returned'):
         assert result is None
