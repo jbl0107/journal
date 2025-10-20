@@ -16,7 +16,7 @@ def get_user_by_id(session:Session, id:int) -> User | None:
     Operación CRUD que obtiene el usuario especificado por el parámetro id.
     Si no existe en BD, devuelve None
     '''
-    return session.scalar(select(User).where(User.id == id))
+    return session.get(User, id)
     
 
 def create_user(user: UserCreate, session:Session) -> User:
