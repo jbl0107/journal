@@ -1,8 +1,9 @@
 import pytest
-from crud.user import get_users, get_user_by_id, create_user
+from crud.user import get_users, get_user_by_id, create_user, delete_user
 from unittest.mock import Mock, MagicMock
 from schemas.user import UserCreate
 from models.user import User
+from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from exceptions.user_exceptions import UserAlreadyExists
 from models.note import Note  # Necesario en runtime para que SQLAlchemy resuelva User.notes
@@ -91,7 +92,7 @@ def test_create_user_ok(user, subtests):
     Test unitario que comprueba el funcionamiento de la función CRUD create_user
     en un caso exitoso (inserción correcta de un nuevo usuario).
     '''
-    mock_session = MagicMock()
+    mock_session = MagicMock(spec=Session)
     
     result = create_user(UserCreate.model_validate(user), mock_session)
 
@@ -124,7 +125,7 @@ def test_create_user_error(user):
     (violación de la restricción de unicidad).
     '''
 
-    mock_session = MagicMock()
+    mock_session = MagicMock(spec=Session)
 
     mock_e_orig = Mock()
     mock_e_orig.diag.constraint_name = 'users_username_key'
@@ -132,5 +133,55 @@ def test_create_user_error(user):
 
     with pytest.raises(UserAlreadyExists):
         create_user(user, mock_session)
+
+
+
+def test_delete_user_ok(user, subtests):
+    '''
+    Test unitario que prueba el borrado de
+    un usuario registrado en el sistema
+    '''
+    
+    mock_session = MagicMock(spec=Session) # mock sujeto a condiciones de Session. Mas estricto y seguro
+    mock_session.get.return_value = user
+
+    user_id = 1
+    result = delete_user(mock_session, user_id)
+    
+    with subtests.test('get called once with'):
+        mock_session.get.assert_called_once_with(User, user_id)
+
+    with subtests.test('begin and delete called once'):
+        mock_session.begin.assert_called_once()
+        mock_session.delete.assert_called_once_with(user)
+
+    with subtests.test('data returned'):
+        assert result is user 
+
+
+def test_delete_user_none(subtests):
+    '''
+    Test unitario que prueba el intento de borrado
+    de un usuario no registrado en el sistema
+    '''
+    
+    mock_session = MagicMock(spec=Session)
+    mock_session.get.return_value = None
+
+    user_id = 111
+    result = delete_user(mock_session, user_id)
+
+    with subtests.test('get called once with'):
+        mock_session.get.assert_called_once_with(User, user_id)
+
+    with subtests.test('begin called'):
+        mock_session.begin.assert_called_once()
+
+    with subtests.test('delete not called'):
+        mock_session.delete.assert_not_called()
+
+    with subtests.test('data returned'):
+        assert result is None
+
 
 
