@@ -41,3 +41,21 @@ def create_user(user: UserCreate, session:Session) -> User:
         raise # Relanzar cualquier excepcion no contemplada
     
     return new_user
+
+
+
+def delete_user(session:Session, id:int) -> None:
+    '''
+    Operación CRUD que borra el usuario con el id especificado. 
+    Si no existe, devuelve None
+    '''
+
+    user = session.get(User, id)
+
+    if not user:
+        return None
+
+    session.delete(user)
+    session.commit()
+
+    return user
