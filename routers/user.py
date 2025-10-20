@@ -11,16 +11,13 @@ router = APIRouter(prefix='/users', tags=['Users'])
 
 @router.get('/')
 def get_all(db: Session = Depends(get_db)) -> list[UserRead]:
-    '''Endpoint para obtener todos los usuarios'''
+    '''Obtiene todos los usuarios registrados'''
     return get_users(db)
 
 
 @router.get('/{id}')
 def get_by_id(id:int, db:Session = Depends(get_db)) -> UserRead: 
-    '''
-    Endpoint para obtener un usuario por id. Posibles códigos de error:
-    - 404 -> el usuario con dicho id no existe
-    '''
+    '''Recupera la información de un usuario específico'''
 
     user = get_user_by_id(db, id)
     if user:
@@ -31,10 +28,7 @@ def get_by_id(id:int, db:Session = Depends(get_db)) -> UserRead:
 
 @router.post('/', status_code=status.HTTP_201_CREATED)
 def create(user:UserCreate, db:Session = Depends(get_db)) -> UserRead:
-    '''
-    Endpoint para crear un usuario. Posibles códigos de error:
-    - 400 -> Ya existe un usuario con dicho username
-    '''
+    ''' Crea un nuevo usuario en el sistema'''
 
     try:
         return create_user(user, db)
