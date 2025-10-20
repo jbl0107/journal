@@ -49,13 +49,11 @@ def delete_user(session:Session, id:int) -> None:
     Operación CRUD que borra el usuario con el id especificado. 
     Si no existe, devuelve None
     '''
+    with session.begin():
+        user = session.get(User, id)
+        if not user:
+            return None
 
-    user = session.get(User, id)
-
-    if not user:
-        return None
-
-    session.delete(user)
-    session.commit()
+        session.delete(user)
 
     return user
