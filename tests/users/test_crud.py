@@ -19,6 +19,7 @@ def user():
 
 @pytest.fixture
 def magic_mock_session():
+    """Mock de SQLAlchemy Session con spec para verificar métodos."""
     return MagicMock(spec=Session)
 
 ## FIN FIXTURE ##

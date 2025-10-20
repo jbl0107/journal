@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from fastapi import status
 from unittest.mock import Mock, MagicMock
 
+from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from schemas.user import UserRead, UserCreate
@@ -50,7 +51,7 @@ def magic_mock_db_session():
     - Solo afecta a este test en memoria y se limpia automáticamente después.
     '''
 
-    magic_mock_session = MagicMock()
+    magic_mock_session = MagicMock(spec=Session)
 
     def override_get_db():
         yield magic_mock_session
@@ -97,10 +98,10 @@ def user_list(mock_db_session, request):
 def user(mock_db_session, request):
     '''
     Fixture que prepara a la sesión mockeada para que tenga un valor al llamar a su metodo
-    "scalar". Se devuelve el resultado para poder utilizarlo en el test correspondiente
+    "get". Se devuelve el resultado para poder utilizarlo en el test correspondiente
     y poder hacer comparaciones
     '''
-    mock_db_session.scalar.return_value = request.param
+    mock_db_session.get.return_value = request.param
     return request.param
 
 
@@ -173,7 +174,7 @@ def test_get_by_id_not_found(mock_db_session):
     Test unitario básico para validar que el endpoint get_by_id responde 404 NOT FOUND
     cuando no existe el usuario con el id especificado
     '''
-    mock_db_session.scalar.return_value = None
+    mock_db_session.get.return_value = None
     response = client.get(f'/users/{11}')
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -379,4 +380,3 @@ def test_create_invalid_email(valid_payload, subtests, value, msg):
     with subtests.test('invalid email'):
         json_detail = response.json()['detail'][0]
         assert json_detail['msg'] == msg and json_detail['loc'][1] == 'email'
-        
