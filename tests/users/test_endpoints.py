@@ -380,3 +380,26 @@ def test_create_invalid_email(valid_payload, subtests, value, msg):
     with subtests.test('invalid email'):
         json_detail = response.json()['detail'][0]
         assert json_detail['msg'] == msg and json_detail['loc'][1] == 'email'
+
+
+
+## TEST DELETE ##
+
+def test_delete_ok(magic_mock_db_session):
+    '''Test básico para asegurar que el endpoint `/users/{id}` responde 204 OK'''
+
+    magic_mock_db_session.get.return_value = User(first_name='Pepe', last_name = 'Ruiz', username = 'rai17', age  = 24, password='12345678')
+    response = client.delete(f'/users/{1}')
+
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+        
+    
+def test_delete_not_found(magic_mock_db_session):
+    '''
+    Test básico para asegurar que el endpoint `/users/{id}` responde 404 en caso
+    de que el usuario con dicho ID no exista en el sistema
+    '''
+    magic_mock_db_session.get.return_value = None
+    
+    response = client.delete(f'/users/{111}')
+    assert response.status_code == status.HTTP_404_NOT_FOUND
