@@ -15,15 +15,21 @@ class UserRead(UserBase):
     id:int
     
 
-class UserUpdate(UserBase):
+class UserCreate(UserBase):
+    password:str = Field(min_length=8)
+
+
+class UserUpdate(UserCreate):
+    pass
+
+
+class UserPatch(UserBase):
     first_name:Optional[str] = Field(None, min_length=2, max_length=25)
     last_name:Optional[str] = Field(None, min_length=2, max_length=30)
     username:Optional[str] = Field(None, min_length=3, max_length=20)
     age:Optional[int] = Field(None, gt=0, lt=100)
+    password:Optional[str] = Field(min_length=8)
 
-
-class UserCreate(UserBase):
-    password:str = Field(min_length=8)
 
 
 class UserInDb(UserRead):
