@@ -15,7 +15,9 @@ def get_all(db: Session = Depends(get_db)) -> list[UserRead]:
     return get_users(db)
 
 
-@router.get('/{id}')
+@router.get('/{id}', responses={
+    404: {'description': 'El usuario con id especificado no existe'}
+})
 def get_by_id(id:int, db:Session = Depends(get_db)) -> UserRead: 
     '''Recupera la información de un usuario específico'''
 
@@ -26,7 +28,9 @@ def get_by_id(id:int, db:Session = Depends(get_db)) -> UserRead:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='El usuario con id especificado no existe')
 
 
-@router.post('/', status_code=status.HTTP_201_CREATED)
+@router.post('/', status_code=status.HTTP_201_CREATED, responses={
+    400: {'description': 'El usuario con el username especificado ya existe'}
+})
 def create(user:UserCreate, db:Session = Depends(get_db)) -> UserRead:
     ''' Crea un nuevo usuario en el sistema'''
 
@@ -54,8 +58,7 @@ def update(id:int, user_update:UserUpdate, session: Session = Depends(get_db)) -
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='El usuario con id especificado no existe')
     
-
-
+    
     return user
     
 
