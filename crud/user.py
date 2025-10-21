@@ -48,7 +48,6 @@ def update_user(id:int, user_update:UserUpdate, session:Session) -> User | None:
     '''Operación CRUD que actualiza un usuario'''
 
     try:
-
         with session.begin():
             user = session.get(User, id)
             if not user:
@@ -60,7 +59,7 @@ def update_user(id:int, user_update:UserUpdate, session:Session) -> User | None:
     except IntegrityError as e:
         constraint = getattr(e.orig.diag, 'constraint_name', None)
         if constraint == 'users_username_key':
-            raise UserAlreadyExists(user.username)
+            raise UserAlreadyExists(username=user.username)
 
         raise    
 
