@@ -12,6 +12,8 @@ from models.user import User
 from main import app
 from db import get_db
 
+from tests.shared_helpers import call_endpoint, assert_201_or_200
+
 
 MSG_NO_AT = 'value is not a valid email address: An email address must have an @-sign.'
 
@@ -41,16 +43,13 @@ def mock_db_session():
 
     app.dependency_overrides.pop(get_db, None)
 
-
-
 @pytest.fixture
-def magic_mock_db_session():
+def magic_mock_session():
     '''
     Fixture que crea una sesión MagicMock para endpoints que dependen de `get_db`.
     - Sobrescribe `get_db` para usar la sesión MagicMock en lugar de la DB real.
     - Solo afecta a este test en memoria y se limpia automáticamente después.
     '''
-
     magic_mock_session = MagicMock(spec=Session)
 
     def override_get_db():
@@ -58,18 +57,26 @@ def magic_mock_db_session():
 
     app.dependency_overrides[get_db] = override_get_db
 
+    yield magic_mock_session
+
+    app.dependency_overrides.pop(get_db, None)
+
+
+
+@pytest.fixture
+def magic_mock_session_with_add(magic_mock_session):
+    '''
+    Fixture que crea una sesión MagicMock para endpoints que dependen de `get_db`
+    con el método add definido
+    '''
+
     # Simula que la base de datos asigna un ID al añadir un usuario
     def fake_add(user):
         user.id = 1
         return user
     
     magic_mock_session.add.side_effect = fake_add
-
-    yield magic_mock_session
-
-    app.dependency_overrides.pop(get_db, None)
-
-
+    return magic_mock_session
 
 
 @pytest.fixture(params=[
@@ -112,6 +119,12 @@ def user(mock_db_session, request):
 ])
 def user_create(request):
     return request.param
+
+
+@pytest.fixture
+def create_response(magic_mock_session_with_add, user_create):
+    '''Fixture que crea un usuario vía POST y devuelve el response'''
+    return call_endpoint(client=client, method='post', base_url='/users', payload=user_create.model_dump())
 
 
 @pytest.fixture
@@ -182,36 +195,28 @@ def test_get_by_id_not_found(mock_db_session):
 
 ## TESTS CREATE ##
 
-def test_create_ok(magic_mock_db_session, user_create):
+def test_create_ok(create_response):
     '''
     Test unitario básico para validar que el endpoint create responde 201
     cuando el usuario ha sido creado
     '''
-
-    payload = user_create.model_dump()
-
-    response = client.post('/users/', json=payload)
-
-    assert response.status_code == status.HTTP_201_CREATED
+    assert_201_or_200(create_response, 'post')
 
 
-def test_create_ok_data(magic_mock_db_session, user_create):
+def test_create_ok_data(create_response, user_create):
     '''
     Test unitario que valida los datos devueltos por el endpoint
     create cuando el usuario ha sido creado satisfactoriamente
     '''
 
-    payload = user_create.model_dump()
-
-    response = client.post('/users/', json=payload)
-    data = response.json()
+    data = create_response.json()
 
     user_out = UserRead.model_validate(data).model_dump(exclude={'id'})
 
     assert user_create.model_dump(exclude={'password'}) == user_out
 
 
-def test_create_username_exist_error(magic_mock_db_session, user_create):
+def test_create_username_exist_error(magic_mock_session_with_add, user_create):
     '''
     Test unitario que valida si el endpoint create devuelve un 400
     cuando se intenta insertar un usuario con un username ya existente
@@ -219,7 +224,7 @@ def test_create_username_exist_error(magic_mock_db_session, user_create):
 
     mock_e_orig = Mock()
     mock_e_orig.diag.constraint_name = 'users_username_key'
-    magic_mock_db_session.add.side_effect = IntegrityError(None, None, mock_e_orig)
+    magic_mock_session_with_add.add.side_effect = IntegrityError(None, None, mock_e_orig)
 
     response = client.post('/users/', json=user_create.model_dump())
 
@@ -228,7 +233,7 @@ def test_create_username_exist_error(magic_mock_db_session, user_create):
 
 @pytest.mark.parametrize('field', ['first_name', 'last_name', 'username', 'age', 'password'], 
                          ids=['first_name missing', 'last_name missing', 'username missing', 'age missing', 'password missing'])
-def test_create_required_fields_missing(magic_mock_db_session, valid_payload, field, subtests):
+def test_create_required_fields_missing(magic_mock_session_with_add, valid_payload, field, subtests):
     '''
     Test unitario que valida si el endpoint devuelve un error
     422 cuando se intenta pasar un payload sin algún campo obligatorio
@@ -385,21 +390,22 @@ def test_create_invalid_email(valid_payload, subtests, value, msg):
 
 ## TEST DELETE ##
 
-def test_delete_ok(magic_mock_db_session):
+def test_delete_ok(magic_mock_session):
     '''Test básico para asegurar que el endpoint `/users/{id}` responde 204 OK'''
 
-    magic_mock_db_session.get.return_value = User(first_name='Pepe', last_name = 'Ruiz', username = 'rai17', age  = 24, password='12345678')
+    magic_mock_session.get.return_value = User(first_name='Pepe', last_name = 'Ruiz', username = 'rai17', age  = 24, password='12345678')
     response = client.delete(f'/users/{1}')
 
     assert response.status_code == status.HTTP_204_NO_CONTENT
         
     
-def test_delete_not_found(magic_mock_db_session):
+def test_delete_not_found(magic_mock_session):
     '''
     Test básico para asegurar que el endpoint `/users/{id}` responde 404 en caso
     de que el usuario con dicho ID no exista en el sistema
     '''
-    magic_mock_db_session.get.return_value = None
+    magic_mock_session.get.return_value = None
     
     response = client.delete(f'/users/{111}')
     assert response.status_code == status.HTTP_404_NOT_FOUND
+
