@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, status, HTTPException
-from crud.user import get_users, get_user_by_id, create_user, delete_user
-from schemas.user import UserRead, UserCreate
+from crud.user import get_users, get_user_by_id, create_user, delete_user, update_user
+from schemas.user import UserRead, UserCreate, UserUpdate
 from sqlalchemy.orm import Session
 from db import get_db
 from exceptions.user_exceptions import UserAlreadyExists
@@ -37,7 +37,32 @@ def create(user:UserCreate, db:Session = Depends(get_db)) -> UserRead:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
     
 
-@router.delete('/{id}', status_code=status.HTTP_204_NO_CONTENT)
+@router.put('/{id}', responses={
+    404: {'description':'El usuario con id especificado no existe'},
+    400: {'description': 'El usuario con el username especificado ya existe'}
+})
+def update(id:int, user_update:UserUpdate, session: Session = Depends(get_db)) -> UserRead:
+    '''Actualiza un usuario del sistema'''
+
+    try:
+        user = update_user(id, user_update, session)
+
+    except UserAlreadyExists as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
+    
+
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='El usuario con id especificado no existe')
+    
+
+
+    return user
+    
+
+@router.delete('/{id}', status_code=status.HTTP_204_NO_CONTENT, responses={
+        404: {"description": "El usuario con id especificado no existe"}
+    }
+)
 def delete(id:int, session:Session = Depends(get_db)) -> None:
     '''Elimina un usuario del sistema'''
     user = delete_user(session, id)
