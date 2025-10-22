@@ -12,7 +12,7 @@ from models.user import User
 from main import app
 from db import get_db
 
-from tests.users.helpers import call_endpoint, assert_201_or_200, assert_422
+from tests.users.helpers import call_endpoint, assert_422
 from tests.users.constants import (
     VALIDATION_TOO_SHORT, VALIDATION_TOO_LONG, 
     VALIDATION_GREATER_THAN, VALIDATION_LESS_THAN, 
@@ -204,7 +204,7 @@ def test_create_ok(create_response):
     Test unitario básico para validar que el endpoint create responde 201
     cuando el usuario ha sido creado
     '''
-    assert_201_or_200(create_response, 'post')
+    assert create_response.status_code == status.HTTP_201_CREATED
 
 
 def test_create_ok_data(create_response, user_create):
@@ -357,15 +357,13 @@ def test_create_invalid_email(magic_mock_session, valid_payload, subtests, value
     
 
 
-
-
 ## TEST DELETE ##
 
 def test_delete_ok(magic_mock_session):
     '''Test básico para asegurar que el endpoint `/users/{id}` responde 204 OK'''
 
     magic_mock_session.get.return_value = User(first_name='Pepe', last_name = 'Ruiz', username = 'rai17', age  = 24, password='12345678')
-    response = client.delete(f'/users/{1}')
+    response = call_endpoint(client=client, method='delete', base_url=BASE_URL, resource_id=1)
 
     assert response.status_code == status.HTTP_204_NO_CONTENT
         
@@ -377,6 +375,6 @@ def test_delete_not_found(magic_mock_session):
     '''
     magic_mock_session.get.return_value = None
     
-    response = client.delete(f'/users/{111}')
+    response = call_endpoint(client=client, method='delete', base_url=BASE_URL, resource_id=100)
     assert response.status_code == status.HTTP_404_NOT_FOUND
 

@@ -4,7 +4,7 @@ from fastapi import Response, status
 
 
 def call_endpoint(client:TestClient, method:str, base_url:str, resource_id:int | None = None, payload:dict | None = None):
-    '''Helper: llama a post o put segun method'''
+    '''Helper: llama a post, put, delete segun method'''
 
     base_url = base_url.rstrip('/')
 
@@ -14,16 +14,11 @@ def call_endpoint(client:TestClient, method:str, base_url:str, resource_id:int |
     elif method == 'put':
         assert resource_id is not None
         return client.put(f'{base_url}/{resource_id}', json=payload)
+    
+    elif method == 'delete':
+        return client.delete(f'{base_url}/{resource_id}')
 
     raise ValueError('Método no soportado')
-
-
-def assert_201_or_200(response:Response, method:str):
-    if method == 'put':
-        assert response.status_code == status.HTTP_200_OK
-
-    elif method == 'post':
-        assert response.status_code == status.HTTP_201_CREATED
 
 
 def assert_422(response:Response, subtests, *, context:str, field:str | None = None, msg:str | None = None, 
@@ -38,8 +33,6 @@ def assert_422(response:Response, subtests, *, context:str, field:str | None = N
         assert_field_error(response, field, msg, subtests, label, key)
     
     
-
-
 
 def required_fields(response:Response, required_field:str, subtests):
     with subtests.test(f'missing field {required_field} error'):
