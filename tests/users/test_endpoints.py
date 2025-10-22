@@ -147,43 +147,35 @@ def valid_payload():
 
 ## TESTS GET_ALL ##
 
-def test_get_all_users_exists(user_list):
+def test_get_all_users_ok(user_list, subtests):
     '''
     Test básico para asegurar que el endpoint `/users` responde 200 OK.
-    No valida contenido, solo disponibilidad.
+    Valida que la respuesta contenga exactamente los datos esperados.
     '''
     
     response = call_endpoint(client=client, method='get', base_url=BASE_URL)
-    assert response.status_code == status.HTTP_200_OK
 
+    with subtests.test('status code'):
+        assert response.status_code == status.HTTP_200_OK
 
-
-def test_get_all_users_data(user_list):
-    """
-    Test unitario del endpoint `/users` usando una sesión mock.
-    - Valida que la respuesta contenga exactamente los datos esperados.
-    """
-    response = call_endpoint(client=client, method='get', base_url=BASE_URL)
-    assert response.json() == [UserRead.model_validate(fu).model_dump() for fu in user_list]
+    with subtests.test('data validation'):
+        assert response.json() == [UserRead.model_validate(fu).model_dump() for fu in user_list]
+    
 
 
 ## TESTS GET_BY_ID ##
 
-def test_get_by_id_ok(user):
+def test_get_by_id_ok(user, subtests):
     '''
     Test unitario básico para validar que el endpoint get_by_id responde 200 OK
-    cuando el usuario con el id especificado existe
+    cuando el usuario con el id especificado existe, además de validar los datos
     '''
     response = call_endpoint(client=client, method='get_by_id', base_url=BASE_URL, resource_id=user.id)
-    assert response.status_code == status.HTTP_200_OK
+    with subtests.test('status code'):
+        assert response.status_code == status.HTTP_200_OK
 
-
-def test_get_by_id_ok_data(user):
-    '''
-    Test unitario que valida el formato de los datos del endpoint get_by_id
-    '''
-    response = call_endpoint(client=client, method='get_by_id', base_url=BASE_URL, resource_id=user.id)
-    assert response.json() == UserRead.model_validate(user).model_dump()
+    with subtests.test('data validation'):
+        assert response.json() == UserRead.model_validate(user).model_dump()
 
 
 def test_get_by_id_not_found(mock_db_session):
@@ -199,26 +191,32 @@ def test_get_by_id_not_found(mock_db_session):
 
 ## TESTS CREATE ##
 
-def test_create_ok(create_response):
+def test_create_ok(create_response, user_create, subtests):
     '''
     Test unitario básico para validar que el endpoint create responde 201
-    cuando el usuario ha sido creado
+    cuando el usuario ha sido creado y que los datos devueltos son correctos
     '''
-    assert create_response.status_code == status.HTTP_201_CREATED
 
+    with subtests.test('status code'):
+        assert create_response.status_code == status.HTTP_201_CREATED
 
-def test_create_ok_data(create_response, user_create):
-    '''
-    Test unitario que valida los datos devueltos por el endpoint
-    create cuando el usuario ha sido creado satisfactoriamente
-    '''
 
     data = create_response.json()
-
     user_out = UserRead.model_validate(data).model_dump(exclude={'id'})
 
-    assert user_create.model_dump(exclude={'password'}) == user_out
+    with subtests.test('data validation'):
+        assert user_create.model_dump(exclude={'password'}) == user_out
 
+
+
+## TESTS UPDATE ##
+
+def test_update_ok(magic_mock_session, valid_payload):
+    pass
+
+
+
+## TESTS VALIDATION FOR CREATE / UPDATE ##
 
 def test_create_username_exist_error(magic_mock_session_with_add, user_create):
     '''
@@ -355,7 +353,7 @@ def test_create_invalid_email(magic_mock_session, valid_payload, subtests, value
     
 
 
-## TEST DELETE ##
+## TESTS DELETE ##
 
 def test_delete_ok(magic_mock_session):
     '''Test básico para asegurar que el endpoint `/users/{id}` responde 204 OK'''
