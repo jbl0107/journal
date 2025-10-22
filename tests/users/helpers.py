@@ -4,11 +4,17 @@ from fastapi import Response, status
 
 
 def call_endpoint(client:TestClient, method:str, base_url:str, resource_id:int | None = None, payload:dict | None = None):
-    '''Helper: llama a post, put, delete segun method'''
+    '''Helper: llama a get/get_by_id, post, put o delete segun method'''
 
     base_url = base_url.rstrip('/')
 
-    if method == 'post':
+    if method == 'get':
+        return client.get(f'{base_url}/')
+    
+    elif method == 'get_by_id':
+        return client.get(f'{base_url}/{resource_id}')
+
+    elif method == 'post':
         return client.post(f'{base_url}/', json=payload)
     
     elif method == 'put':

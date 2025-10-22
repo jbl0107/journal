@@ -153,7 +153,7 @@ def test_get_all_users_exists(user_list):
     No valida contenido, solo disponibilidad.
     '''
     
-    response = client.get('/users')
+    response = call_endpoint(client=client, method='get', base_url=BASE_URL)
     assert response.status_code == status.HTTP_200_OK
 
 
@@ -163,7 +163,7 @@ def test_get_all_users_data(user_list):
     Test unitario del endpoint `/users` usando una sesión mock.
     - Valida que la respuesta contenga exactamente los datos esperados.
     """
-    response = client.get('/users')
+    response = call_endpoint(client=client, method='get', base_url=BASE_URL)
     assert response.json() == [UserRead.model_validate(fu).model_dump() for fu in user_list]
 
 
@@ -174,7 +174,7 @@ def test_get_by_id_ok(user):
     Test unitario básico para validar que el endpoint get_by_id responde 200 OK
     cuando el usuario con el id especificado existe
     '''
-    response = client.get(f'/users/{user.id}')
+    response = call_endpoint(client=client, method='get_by_id', base_url=BASE_URL, resource_id=user.id)
     assert response.status_code == status.HTTP_200_OK
 
 
@@ -182,7 +182,7 @@ def test_get_by_id_ok_data(user):
     '''
     Test unitario que valida el formato de los datos del endpoint get_by_id
     '''
-    response = client.get(f'/users/{user.id}')
+    response = call_endpoint(client=client, method='get_by_id', base_url=BASE_URL, resource_id=user.id)
     assert response.json() == UserRead.model_validate(user).model_dump()
 
 
@@ -192,7 +192,7 @@ def test_get_by_id_not_found(mock_db_session):
     cuando no existe el usuario con el id especificado
     '''
     mock_db_session.get.return_value = None
-    response = client.get(f'/users/{11}')
+    response = call_endpoint(client=client, method='get_by_id', base_url=BASE_URL, resource_id=110)
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -246,8 +246,6 @@ def test_create_required_fields_missing(magic_mock_session, valid_payload, field
     response = call_endpoint(client=client, method='post', base_url=BASE_URL, payload=valid_payload)
 
     assert_422(response, subtests, context=REQUIRED_FIELDS, field=field)
-
-    
 
 
 @pytest.mark.parametrize(['field', 'value', 'msg'], [
