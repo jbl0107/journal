@@ -12,10 +12,14 @@ from models.user import User
 from main import app
 from db import get_db
 
-from tests.shared_helpers import call_endpoint, assert_201_or_200
+from tests.users.helpers import call_endpoint, assert_201_or_200, assert_422
+from tests.users.constants import (
+    VALIDATION_TOO_SHORT, VALIDATION_TOO_LONG, 
+    VALIDATION_GREATER_THAN, VALIDATION_LESS_THAN, 
+    REQUIRED_FIELDS, ASSERT_FIELD_ERRORS,
+    BASE_URL, MSG_NO_AT
+    )
 
-
-MSG_NO_AT = 'value is not a valid email address: An email address must have an @-sign.'
 
 client = TestClient(app)
 
@@ -124,7 +128,7 @@ def user_create(request):
 @pytest.fixture
 def create_response(magic_mock_session_with_add, user_create):
     '''Fixture que crea un usuario vía POST y devuelve el response'''
-    return call_endpoint(client=client, method='post', base_url='/users', payload=user_create.model_dump())
+    return call_endpoint(client=client, method='post', base_url=BASE_URL, payload=user_create.model_dump())
 
 
 @pytest.fixture
@@ -226,139 +230,110 @@ def test_create_username_exist_error(magic_mock_session_with_add, user_create):
     mock_e_orig.diag.constraint_name = 'users_username_key'
     magic_mock_session_with_add.add.side_effect = IntegrityError(None, None, mock_e_orig)
 
-    response = client.post('/users/', json=user_create.model_dump())
+    response = call_endpoint(client=client, method='post', base_url=BASE_URL, payload=user_create.model_dump())
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 @pytest.mark.parametrize('field', ['first_name', 'last_name', 'username', 'age', 'password'], 
                          ids=['first_name missing', 'last_name missing', 'username missing', 'age missing', 'password missing'])
-def test_create_required_fields_missing(magic_mock_session_with_add, valid_payload, field, subtests):
+def test_create_required_fields_missing(magic_mock_session, valid_payload, field, subtests):
     '''
     Test unitario que valida si el endpoint devuelve un error
     422 cuando se intenta pasar un payload sin algún campo obligatorio
     '''
     valid_payload.pop(field)
-    response = client.post('/users/', json=valid_payload)
+    response = call_endpoint(client=client, method='post', base_url=BASE_URL, payload=valid_payload)
 
-    with subtests.test('status code'):
-        assert response.status_code == 422
+    assert_422(response, subtests, context=REQUIRED_FIELDS, field=field)
 
-    with subtests.test(f'missing field {field} error'):
-        assert response.json()['detail'][0]['loc'][1] == field
+    
 
 
 @pytest.mark.parametrize(['field', 'value', 'msg'], [
-    ('first_name', 'a', 'string_too_short'),
-    ('first_name', 'a'*26, 'string_too_long'),
-    ('first_name', '', 'string_too_short'),
-    ('last_name', 'b', 'string_too_short'),
-    ('last_name', 'b'*31, 'string_too_long'),
-    ('last_name', '', 'string_too_short')
+    ('first_name', 'a', VALIDATION_TOO_SHORT),
+    ('first_name', 'a'*26, VALIDATION_TOO_LONG),
+    ('first_name', '', VALIDATION_TOO_SHORT),
+    ('last_name', 'b', VALIDATION_TOO_SHORT),
+    ('last_name', 'b'*31, VALIDATION_TOO_LONG),
+    ('last_name', '', VALIDATION_TOO_SHORT)
 
 ], ids=['min first_name', 'max first_name', 'empty first_name', 'min last_name', 'max last_name', 'empty last_name'])
-def test_create_name_length_limits(valid_payload, subtests, field, value, msg):
+def test_create_name_length_limits(magic_mock_session, valid_payload, subtests, field, value, msg):
     '''
     Test unitario que intenta crear un usuario con valores límite 
     incorrectos (longitud) en los campos first_name y last_name
     '''
     
     valid_payload[field] = value
-    response = client.post('/users/', json=valid_payload)
+    response = call_endpoint(client=client, method='post', base_url=BASE_URL, payload=valid_payload)
 
+    assert_422(response, subtests, context=ASSERT_FIELD_ERRORS, field=field, msg=msg)
 
-    with subtests.test('status code'):
-        assert response.status_code == 422
-
-    with subtests.test(f'{field} length'):
-        json_detail = response.json()['detail'][0]
-        assert json_detail['type'] == msg and field in json_detail['loc']
-    
 
 
 @pytest.mark.parametrize(['value', 'msg'], [
-    ('us', 'string_too_short'),
-    ('', 'string_too_short'),
-    (' ', 'string_too_short'),
-    ('a'*21, 'string_too_long')
+    ('us', VALIDATION_TOO_SHORT),
+    ('', VALIDATION_TOO_SHORT),
+    (' ', VALIDATION_TOO_SHORT),
+    ('a'*21, VALIDATION_TOO_LONG)
 
 ], ids=['min username', 'empty username', 'only_one_space', 'max username'])
-def test_create_username_limits(valid_payload, subtests, value, msg):
+def test_create_username_limits(magic_mock_session, valid_payload, subtests, value, msg):
     '''
     Test unitario que intenta crear un usuario con
     valores incorrectos para el campo username (valores límite de longitud)
     '''
 
     valid_payload['username'] = value
-    response = client.post('/users/', json=valid_payload)
+    response = call_endpoint(client=client, method='post', base_url=BASE_URL, payload=valid_payload)
 
-    with subtests.test('status code'):
-        assert response.status_code == 422
-
-    with subtests.test('username length'):
-        json_detail = response.json()['detail'][0]
-        assert json_detail['type'] == msg and 'username' in json_detail['loc']
-
+    assert_422(response, subtests, context=ASSERT_FIELD_ERRORS, field='username', msg=msg)
+    
 
 @pytest.mark.parametrize('value', ['   ', 'user name', ' username', 'username '], 
                          ids=['only_spaces', 'space_in_the_middle', 'begin_with_space', 'end_with_space'])
-def test_create_username_regexp(valid_payload, subtests, value):
+def test_create_username_regexp(magic_mock_session, valid_payload, subtests, value):
     '''
     Test unitario que intenta crear un usuario con
     un username que no cumple el formato (no se admiten espacios en blanco) 
     '''    
     valid_payload['username'] = value
-    response = client.post('/users/', json=valid_payload)
+    response = call_endpoint(client=client, method='post', base_url=BASE_URL, payload=valid_payload)
 
-    with subtests.test('status code'):
-        assert response.status_code == 422
+    assert_422(response, subtests, context=ASSERT_FIELD_ERRORS, field='username', msg='string_pattern_mismatch', 
+               label='username regexp')
 
-    with subtests.test('regexp'):
-        json_detail = response.json()['detail'][0]
-        assert json_detail['type'] == 'string_pattern_mismatch' and 'username' in json_detail['loc']
-
+      
 
 @pytest.mark.parametrize(['value', 'msg'], [
-    (0, 'greater_than'),
-    (-5, 'greater_than'),
-    (100, 'less_than')
+    (0, VALIDATION_GREATER_THAN),
+    (-5, VALIDATION_GREATER_THAN),
+    (100, VALIDATION_LESS_THAN)
 ], ids=['0', '-5', '100'])
-def test_create_age_range(valid_payload, subtests, value, msg):
+def test_create_age_range(magic_mock_session, valid_payload, subtests, value, msg):
     '''
     Test unitario que intenta crear un usuario con una edad
     fuera del rango válido [1, 99]
     '''
 
     valid_payload['age'] = value
+    response = call_endpoint(client=client, method='post', base_url=BASE_URL, payload=valid_payload)
 
-    response = client.post('/users/', json=valid_payload)
-
-    with subtests.test('status code'):
-        assert response.status_code == 422
-
-    with subtests.test('age range'):
-        json_detail = response.json()['detail'][0]
-        assert json_detail['type'] == msg and 'age' in json_detail['loc']
-
+    assert_422(response, subtests, context=ASSERT_FIELD_ERRORS, field='age', msg=msg, label='age range')
 
 
 @pytest.mark.parametrize('value', ['', 'asdfghj', 'as df'], ids=['empty', 'seven characters', 'four characters'])
-def test_create_password_length(valid_payload, subtests, value):
+def test_create_password_length(magic_mock_session, valid_payload, subtests, value):
     '''
     Test unitario que intenta crear un usuario con una contraseña
     que tiene una longitud inferior a la mínima exigida
     '''
 
     valid_payload['password'] = value
+    response = call_endpoint(client=client, method='post', base_url=BASE_URL, payload=valid_payload)
 
-    response = client.post('/users/', json=valid_payload)
-
-    with subtests.test('status code'):
-        assert response.status_code == 422
-
-    with subtests.test('password min length'):
-        json_detail = response.json()['detail'][0]
-        assert json_detail['type'] == 'string_too_short' and 'password' in json_detail['loc']
+    assert_422(response, subtests, context=ASSERT_FIELD_ERRORS, field='password', msg='string_too_short')
 
 
 @pytest.mark.parametrize(['value', 'msg'], [
@@ -372,19 +347,15 @@ def test_create_password_length(valid_payload, subtests, value):
     ('asdf@-mail.com', 'value is not a valid email address: An email address cannot have a hyphen immediately after the @-sign.')
 
 ], ids=['empty email', 'only scapes', 'only letters', 'only characters', '@.', 'space after @', 'space before @', 'invalid character after @'])
-def test_create_invalid_email(valid_payload, subtests, value, msg):
+def test_create_invalid_email(magic_mock_session, valid_payload, subtests, value, msg):
     ''' Test unitario que intenta crear un usuario con un email inválido '''
 
     valid_payload['email'] = value
+    response = call_endpoint(client=client, method='post', base_url=BASE_URL, payload=valid_payload)
 
-    response = client.post('/users/', json=valid_payload)
+    assert_422(response, subtests, context=ASSERT_FIELD_ERRORS, field='email', msg=msg, label='invalid email', key='msg')
+    
 
-    with subtests.test('status code'):
-        assert response.status_code == 422
-
-    with subtests.test('invalid email'):
-        json_detail = response.json()['detail'][0]
-        assert json_detail['msg'] == msg and json_detail['loc'][1] == 'email'
 
 
 
