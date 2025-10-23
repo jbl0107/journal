@@ -1,26 +1,26 @@
-import pytest
-from fastapi.testclient import TestClient
-from fastapi import status
+# Standard library
 from unittest.mock import Mock, MagicMock, patch
 
+# Third party
+import pytest
+from fastapi import status
+from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 
-from schemas.user import UserRead, UserCreate
-from models.user import User
-
+# Local application
 from main import app
 from db import get_db
-
+from models.user import User
+from schemas.user import UserRead, UserCreate
 from exceptions.user_exceptions import UserAlreadyExists
-
 from tests.users.helpers import call_endpoint, assert_422
 from tests.users.constants import (
     VALIDATION_TOO_SHORT, VALIDATION_TOO_LONG, 
     VALIDATION_GREATER_THAN, VALIDATION_LESS_THAN, 
     REQUIRED_FIELDS, ASSERT_FIELD_ERRORS,
     BASE_URL, MSG_NO_AT
-    )
+)
+
 
 
 client = TestClient(app)
@@ -324,7 +324,7 @@ def test_required_fields_missing(magic_mock_session, valid_payload, method, fiel
 ], ids=['min first_name', 'max first_name', 'empty first_name', 'min last_name', 'max last_name', 'empty last_name'])
 def test_name_length_limits(magic_mock_session, valid_payload, method, field, value, msg, subtests):
     '''
-    Test unitario que intenta crear un usuario con valores límite 
+    Test unitario que intenta crear/actualizar un usuario con valores límite 
     incorrectos (longitud) en los campos first_name y last_name
     '''
     
@@ -346,7 +346,7 @@ def test_name_length_limits(magic_mock_session, valid_payload, method, field, va
 ], ids=['min username', 'empty username', 'only_one_space', 'max username'])
 def test_username_limits(magic_mock_session, valid_payload, method, value, msg, subtests):
     '''
-    Test unitario que intenta crear un usuario con
+    Test unitario que intenta crear/actualizar un usuario con
     valores incorrectos para el campo username (valores límite de longitud)
     '''
 
@@ -362,7 +362,7 @@ def test_username_limits(magic_mock_session, valid_payload, method, value, msg, 
                          ids=['only_spaces', 'space_in_the_middle', 'begin_with_space', 'end_with_space'])
 def test_username_regexp(magic_mock_session, valid_payload, method, value, subtests):
     '''
-    Test unitario que intenta crear un usuario con
+    Test unitario que intenta crear/actualizar un usuario con
     un username que no cumple el formato (no se admiten espacios en blanco) 
     '''    
     valid_payload['username'] = value
@@ -382,7 +382,7 @@ def test_username_regexp(magic_mock_session, valid_payload, method, value, subte
 ], ids=['0', '-5', '100'])
 def test_age_range(magic_mock_session, valid_payload, method, value, msg, subtests):
     '''
-    Test unitario que intenta crear un usuario con una edad
+    Test unitario que intenta crear/actualizar un usuario con una edad
     fuera del rango válido [1, 99]
     '''
 
@@ -397,7 +397,7 @@ def test_age_range(magic_mock_session, valid_payload, method, value, msg, subtes
 @pytest.mark.parametrize('value', ['', 'asdfghj', 'as df'], ids=['empty', 'seven characters', 'four characters'])
 def test_password_length(magic_mock_session, valid_payload, method, value, subtests):
     '''
-    Test unitario que intenta crear un usuario con una contraseña
+    Test unitario que intenta crear/actualizar un usuario con una contraseña
     que tiene una longitud inferior a la mínima exigida
     '''
 
@@ -421,7 +421,7 @@ def test_password_length(magic_mock_session, valid_payload, method, value, subte
 
 ], ids=['empty email', 'only scapes', 'only letters', 'only characters', '@.', 'space after @', 'space before @', 'invalid character after @'])
 def test_invalid_email(magic_mock_session, valid_payload, method, value, msg, subtests):
-    ''' Test unitario que intenta crear un usuario con un email inválido '''
+    ''' Test unitario que intenta crear/actualizar un usuario con un email inválido '''
 
     valid_payload['email'] = value
     resource_id = 1 if method == 'put' else None
