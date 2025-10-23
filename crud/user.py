@@ -2,7 +2,7 @@ from sqlalchemy import select, insert
 from sqlalchemy.orm import Session
 from models.user import User
 from sqlalchemy.exc import IntegrityError
-from schemas.user import UserCreate, UserUpdate
+from schemas.user import UserCreate, UserUpdate, UserPatch
 from exceptions.user_exceptions import UserAlreadyExists
 
 
@@ -44,8 +44,8 @@ def create_user(user: UserCreate, session:Session) -> User:
 
 
 
-def update_user(id:int, user_update:UserUpdate, session:Session) -> User | None:
-    '''Operación CRUD que actualiza un usuario'''
+def update_user(id:int, user_update:UserUpdate | UserPatch, session:Session) -> User | None:
+    '''Operación CRUD que actualiza un usuario (PUT/PATCH)'''
 
     try:
         with session.begin():
@@ -54,18 +54,16 @@ def update_user(id:int, user_update:UserUpdate, session:Session) -> User | None:
                 return None
             
             for field in user_update.model_fields_set:
-                setattr(user, field, (getattr(user_update, field)))
+                setattr(user, field, getattr(user_update, field))
 
     except IntegrityError as e:
         constraint = getattr(e.orig.diag, 'constraint_name', None)
         if constraint == 'users_username_key':
-            raise UserAlreadyExists(username=user.username)
+            raise UserAlreadyExists(username=user_update.username)
 
         raise    
 
     return user
-
-    
 
 
 def delete_user(session:Session, id:int) -> None:
