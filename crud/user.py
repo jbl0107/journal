@@ -66,7 +66,7 @@ def update_user(id:int, user_update:UserUpdate | UserPatch, session:Session) -> 
     return user
 
 
-def delete_user(session:Session, id:int) -> None:
+def delete_user(session:Session, id:int) -> User | None:
     '''
     Operación CRUD que borra el usuario con el id especificado. 
     Si no existe, devuelve None
