@@ -1,7 +1,7 @@
 import pytest
 from crud.user import get_users, get_user_by_id, create_user, delete_user, update_user
 from unittest.mock import Mock, MagicMock
-from schemas.user import UserCreate, UserUpdate
+from schemas.user import UserCreate, UserUpdate, UserPatch
 from models.user import User
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -37,6 +37,14 @@ def mock_e_orig():
     mock_e_orig = Mock()
     mock_e_orig.diag.constraint_name = 'users_username_key'
     return mock_e_orig
+
+
+@pytest.fixture(params=[
+    UserUpdate(first_name='Pepe', last_name='Ruiz', username='nuevo_username', age=25, password='asdfgh123'),
+    UserPatch(username='nuevo_username', age=26)
+    ], ids=['put', 'patch'])
+def user_put_patch(request):
+    return request.param
 
 ## FIN FIXTURE ##
 
@@ -149,35 +157,37 @@ def test_create_user_error(magic_mock_session, mock_e_orig, user):
         create_user(user, magic_mock_session)
 
 
-
-def test_update_user_ok(magic_mock_session, user, subtests):
-    '''Test unitario que prueba la actualización de un usuario existente en el sistema'''
+def test_update_user_ok(magic_mock_session, user, user_put_patch, subtests):
+    '''Test que valida actualización exitosa (PUT/PATCH) de usuario existente'''
+ 
     magic_mock_session.get.return_value = user
-    user_data = UserUpdate(first_name='Pepe', last_name='Ruiz', username='nuevo_username', age=25, password='asdfgh123')
 
     user_id = 1
-    result = update_user(user_id, user_data, magic_mock_session)
+    result = update_user(user_id, user_put_patch, magic_mock_session)
 
     with subtests.test('data validation'):
-        assert UserUpdate.model_validate(result) == user_data
+        if isinstance(user_put_patch, UserUpdate):
+            assert UserUpdate.model_validate(result) == user_put_patch
+        else:
+            for field in user_put_patch.model_fields_set:
+                user_patch = UserPatch.model_validate(result)
+                assert getattr(user_patch, field) == getattr(user_put_patch, field)
 
     with subtests.test('begin called once'):
         magic_mock_session.begin.assert_called_once()
 
     with subtests.test('get called once with'):
-        magic_mock_session.get.assert_called_once_with(User, user_id)
+        magic_mock_session.get.assert_called_once_with(User, user_id)   
+    
 
 
-def test_update_user_none(magic_mock_session, subtests):
-    '''
-    Verifica que update_user devuelve None cuando 
-    no existe un usuario con el id especificado
-    '''
+def test_update_user_none(magic_mock_session, user_put_patch, subtests):
+    '''Test que valida que update_user devuelve None cuando el usuario no existe'''
+
     magic_mock_session.get.return_value = None
-    user_data = UserUpdate(first_name='Pepe', last_name='Ruiz', username='nuevo_username', age=25, password='asdfgh123')
 
     user_id = 1
-    result = update_user(user_id, user_data, magic_mock_session)
+    result = update_user(user_id, user_put_patch, magic_mock_session)
 
     with subtests.test('begin called once'):
         magic_mock_session.begin.assert_called_once()
@@ -186,17 +196,13 @@ def test_update_user_none(magic_mock_session, subtests):
         magic_mock_session.get.assert_called_once_with(User, user_id)
 
     with subtests.test('return value'):
-        assert result == None
+        assert result is None
 
 
-def test_update_user_username_already_exists(magic_mock_session, mock_e_orig, user, subtests):
-    '''
-    Verifica que `update_user` lanza `UserAlreadyExists` cuando se intenta
-    actualizar un usuario con un `username` duplicado (violación de restricción única)
-    '''
+def test_update_user_username_already_exists(magic_mock_session, mock_e_orig, user, user_put_patch, subtests):
+    '''Test que valida que update_user lanza UserAlreadyExists con username duplicado'''
 
     magic_mock_session.get.return_value = user
-    user_data = UserUpdate(first_name='Pepe', last_name='Ruiz', username='nuevo_username', age=25, password='asdfgh123')
 
     # --- Mock del contexto de transacción ---
     # Obtiene el contexto devuelto por `session.begin()` para manipular su comportamiento
@@ -211,7 +217,7 @@ def test_update_user_username_already_exists(magic_mock_session, mock_e_orig, us
 
     with subtests.test('UserAlreadyExists exception'):
         with pytest.raises(UserAlreadyExists):
-            update_user(1, user_data, magic_mock_session)
+            update_user(1, user_put_patch, magic_mock_session)
 
     
     with subtests.test('commit not called'):
