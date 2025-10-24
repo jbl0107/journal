@@ -242,20 +242,28 @@ def test_create_username_exist_error(mock_create_user, user_create):
 
 ## TESTS UPDATE ##
 
-def test_update_ok(user_magic, valid_payload, subtests):
-    '''
-    Test unitario para validar que el endpoint update, en caso de éxito:
-    - Devuelve el código correcto
-    - Los datos devueltos son correctos
-    '''
+@pytest.mark.parametrize(['method', 'payload'], [
+    ('put', {"first_name": "Pepe",
+            "last_name": "Rodriguez",
+            "username": "pep_ul",
+            "age": 24,
+            "password": "12345678"}),
 
-    response = call_endpoint(client=client, method='put', base_url=BASE_URL, resource_id=user_magic.id, payload=valid_payload)
+    ('patch', {
+        'username': 'nuevo_user',
+        'password': 'asdf1234'
+    })
+    ],ids=['put', 'patch-partial'])
+def test_update_ok(user_magic, method, payload, subtests):
+    '''Test que valida que los endpoints PUT/PATCH devuelven codigo 200 y datos correctos'''
+
+    response = call_endpoint(client=client, method=method, base_url=BASE_URL, resource_id=user_magic.id, payload=payload)
 
     with subtests.test('status code'):
         assert response.status_code == status.HTTP_200_OK
 
     with subtests.test('data validation'):
-        expected_data = valid_payload.copy()
+        expected_data = payload.copy()
         expected_data.pop('password')
 
         response_data = response.json()
@@ -264,16 +272,16 @@ def test_update_ok(user_magic, valid_payload, subtests):
             assert response_data[k] == v, f'Error en la clave {k}'
 
 
-
-def test_update_not_found(magic_mock_session, valid_payload):
+@pytest.mark.parametrize('method', ['put', 'patch'])
+def test_update_not_found(magic_mock_session, valid_payload, method):
     '''
-    Test unitario que valida si el endpoint update devuelve un 404
+    Test unitario que valida si los endpoints put y patch devuelven un 404
     cuando se intenta actualizar un usuario que no existe en el sistema
     '''
 
     magic_mock_session.get.return_value = None
 
-    response = call_endpoint(client=client, method='put', base_url=BASE_URL, resource_id= 100,
+    response = call_endpoint(client=client, method=method, base_url=BASE_URL, resource_id= 100,
                              payload=valid_payload)
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -281,14 +289,15 @@ def test_update_not_found(magic_mock_session, valid_payload):
 
 #Parcheamos donde se USA el crud, no donde se define. Al terminar el test, patch restaura la fun OG
 @patch('routers.user.update_user') # ruta: paquete.modulo_donde_se_usa.nombre_funcion_crud
-def test_update_username_exist_error(mock_update_user, valid_payload):
+@pytest.mark.parametrize('method', ['put', 'patch'])
+def test_update_username_exist_error(mock_update_user, valid_payload, method):
     '''
-    Test unitario que valida si el endpoint update devuelve un 400
+    Test unitario que valida si los endpoints put y patch devuelven un 400
     cuando se intenta actualizar un usuario con un username ya existente
     '''
     mock_update_user.side_effect = UserAlreadyExists(username = "existing_user") # mock_update es generado por patch automaticamente
 
-    response = call_endpoint(client=client, method='put', base_url=BASE_URL, resource_id=1,
+    response = call_endpoint(client=client, method=method, base_url=BASE_URL, resource_id=1,
                              payload=valid_payload)
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -305,14 +314,14 @@ def test_required_fields_missing(magic_mock_session, valid_payload, method, fiel
     422 cuando se intenta pasar un payload sin algún campo obligatorio
     '''
     valid_payload.pop(field)
-    resource_id = 1 if method == 'put' else None
+    resource_id = None if method == 'post' else 1
 
     response = call_endpoint(client=client, method=method, base_url=BASE_URL, resource_id=resource_id, payload=valid_payload)
     assert_422(response, subtests, context=REQUIRED_FIELDS, field=field)
 
 
 
-@pytest.mark.parametrize('method', ['post', 'put'])
+@pytest.mark.parametrize('method', ['post', 'put', 'patch'])
 @pytest.mark.parametrize(['field', 'value', 'msg'], [
     ('first_name', 'a', VALIDATION_TOO_SHORT),
     ('first_name', 'a'*26, VALIDATION_TOO_LONG),
@@ -329,14 +338,14 @@ def test_name_length_limits(magic_mock_session, valid_payload, method, field, va
     '''
     
     valid_payload[field] = value
-    resource_id = 1 if method == 'put' else None
+    resource_id = None if method == 'post' else 1
     response = call_endpoint(client=client, method=method, base_url=BASE_URL, resource_id=resource_id, payload=valid_payload)
 
     assert_422(response, subtests, context=ASSERT_FIELD_ERRORS, field=field, msg=msg)
 
 
 
-@pytest.mark.parametrize('method', ['post', 'put'])
+@pytest.mark.parametrize('method', ['post', 'put', 'patch'])
 @pytest.mark.parametrize(['value', 'msg'], [
     ('us', VALIDATION_TOO_SHORT),
     ('', VALIDATION_TOO_SHORT),
@@ -351,13 +360,13 @@ def test_username_limits(magic_mock_session, valid_payload, method, value, msg, 
     '''
 
     valid_payload['username'] = value
-    resource_id = 1 if method == 'put' else None
+    resource_id = None if method == 'post' else 1
     response = call_endpoint(client=client, method=method, base_url=BASE_URL, resource_id=resource_id, payload=valid_payload)
 
     assert_422(response, subtests, context=ASSERT_FIELD_ERRORS, field='username', msg=msg)
     
 
-@pytest.mark.parametrize('method', ['post', 'put'])
+@pytest.mark.parametrize('method', ['post', 'put', 'patch'])
 @pytest.mark.parametrize('value', ['   ', 'user name', ' username', 'username '], 
                          ids=['only_spaces', 'space_in_the_middle', 'begin_with_space', 'end_with_space'])
 def test_username_regexp(magic_mock_session, valid_payload, method, value, subtests):
@@ -366,7 +375,7 @@ def test_username_regexp(magic_mock_session, valid_payload, method, value, subte
     un username que no cumple el formato (no se admiten espacios en blanco) 
     '''    
     valid_payload['username'] = value
-    resource_id = 1 if method == 'put' else None
+    resource_id = None if method == 'post' else 1
     response = call_endpoint(client=client, method=method, base_url=BASE_URL, resource_id=resource_id, payload=valid_payload)
 
     assert_422(response, subtests, context=ASSERT_FIELD_ERRORS, field='username', msg='string_pattern_mismatch', 
@@ -374,7 +383,7 @@ def test_username_regexp(magic_mock_session, valid_payload, method, value, subte
 
       
 
-@pytest.mark.parametrize('method', ['post', 'put'])
+@pytest.mark.parametrize('method', ['post', 'put', 'patch'])
 @pytest.mark.parametrize(['value', 'msg'], [
     (0, VALIDATION_GREATER_THAN),
     (-5, VALIDATION_GREATER_THAN),
@@ -387,13 +396,13 @@ def test_age_range(magic_mock_session, valid_payload, method, value, msg, subtes
     '''
 
     valid_payload['age'] = value
-    resource_id = 1 if method == 'put' else None
+    resource_id = None if method == 'post' else 1
     response = call_endpoint(client=client, method=method, base_url=BASE_URL, resource_id=resource_id, payload=valid_payload)
 
     assert_422(response, subtests, context=ASSERT_FIELD_ERRORS, field='age', msg=msg, label='age range')
 
 
-@pytest.mark.parametrize('method', ['post', 'put'])
+@pytest.mark.parametrize('method', ['post', 'put', 'patch'])
 @pytest.mark.parametrize('value', ['', 'asdfghj', 'as df'], ids=['empty', 'seven characters', 'four characters'])
 def test_password_length(magic_mock_session, valid_payload, method, value, subtests):
     '''
@@ -402,13 +411,13 @@ def test_password_length(magic_mock_session, valid_payload, method, value, subte
     '''
 
     valid_payload['password'] = value
-    resource_id = 1 if method == 'put' else None
+    resource_id = None if method == 'post' else 1
     response = call_endpoint(client=client, method=method, base_url=BASE_URL, resource_id=resource_id, payload=valid_payload)
 
     assert_422(response, subtests, context=ASSERT_FIELD_ERRORS, field='password', msg='string_too_short')
 
 
-@pytest.mark.parametrize('method', ['post', 'put'])
+@pytest.mark.parametrize('method', ['post', 'put', 'patch'])
 @pytest.mark.parametrize(['value', 'msg'], [
     ('', MSG_NO_AT),
     ('  ', MSG_NO_AT),
@@ -424,7 +433,7 @@ def test_invalid_email(magic_mock_session, valid_payload, method, value, msg, su
     ''' Test unitario que intenta crear/actualizar un usuario con un email inválido '''
 
     valid_payload['email'] = value
-    resource_id = 1 if method == 'put' else None
+    resource_id = None if method == 'post' else 1
     response = call_endpoint(client=client, method=method, base_url=BASE_URL, resource_id=resource_id, payload=valid_payload)
 
     assert_422(response, subtests, context=ASSERT_FIELD_ERRORS, field='email', msg=msg, label='invalid email', key='msg')

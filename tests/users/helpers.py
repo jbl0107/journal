@@ -21,6 +21,10 @@ def call_endpoint(client:TestClient, method:str, base_url:str, resource_id:int |
         assert resource_id is not None
         return client.put(f'{base_url}/{resource_id}', json=payload)
     
+    elif method == 'patch':
+        assert resource_id is not None
+        return client.patch(f'{base_url}/{resource_id}', json=payload)
+    
     elif method == 'delete':
         return client.delete(f'{base_url}/{resource_id}')
 
