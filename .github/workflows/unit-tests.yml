@@ -17,6 +17,13 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+      DB_USER_J: ${{ secrets.DB_USER_J }}
+      DB_PASSWORD_J: ${{ secrets.DB_PASSWORD_J }}
+      DB_HOST_J: ${{ secrets.DB_HOST_J }}
+      DB_PORT_J: ${{ secrets.DB_PORT_J }}
+      DB_NAME_J: ${{ secrets.DB_NAME_J }}
+
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python 3.12
