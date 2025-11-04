@@ -13,7 +13,8 @@ from db import get_db
 from models.user import User
 from schemas.user import UserRead, UserCreate
 from exceptions.user_exceptions import UserAlreadyExists
-from tests.users.helpers import call_endpoint, assert_422
+from tests.shared_helpers import call_endpoint
+from tests.users.helpers import assert_422
 from tests.users.constants import (
     VALIDATION_TOO_SHORT, VALIDATION_TOO_LONG, 
     VALIDATION_GREATER_THAN, VALIDATION_LESS_THAN, 
@@ -28,26 +29,6 @@ client = TestClient(app)
 
 
 ### FIXTURES ###
-@pytest.fixture
-def mock_db_session():
-    ''' 
-    Fixture que crea una sesión Mock para endpoints que dependen de `get_db`.
-    - Sobrescribe `get_db` para usar la sesión mock en lugar de la DB real.
-    - Solo afecta a este test en memoria y se limpia automáticamente después.
-    '''
-    mock_session = Mock()
-
-
-    def override_get_db():
-        yield mock_session
-
-    # Sobrescribimos la dependencia `get_db` para que el endpoint use nuestra sesión mock durante el test, evitando tocar la BD.
-    # Esto solo afecta a este test en memoria y se limpia al final con `.pop()` para que no interfiera a otros tests
-    app.dependency_overrides[get_db] = override_get_db
-
-    yield mock_session
-
-    app.dependency_overrides.pop(get_db, None)
 
 @pytest.fixture
 def magic_mock_session():
