@@ -1,18 +1,12 @@
-from crud.note import get_notes
+from crud.note import get_notes, get_note_by_id
 from models.note import Note
 from models.user import User
 
 import pytest
-from unittest.mock import Mock
 
 
 ## FIXTURE ##
 
-@pytest.fixture
-def mock_session():
-    '''Mock de SQLAlchemy Session'''
-    return Mock()
-    
 
 ## FIN FIXTURE ##
 
@@ -44,5 +38,27 @@ def test_get_notes(mock_session, notes, subtests):
         called_select =  mock_session.scalars.call_args.args[0]
         called_select.columns_clause_froms[0].name == Note.__table__.name
 
+
+@pytest.mark.parametrize('note', [
+    Note(id=1, title='Titulo 1', description='Descripción 1', user_id=1),
+    None
+], ids=['note', 'None'])
+def test_get_note_by_id(mock_session, note, subtests):
+    '''
+    Test unitario que comprueba si la operación CRUD get_by_id
+    devuelve los datos correctos. También comprueba la estructura SQL
+    '''
+    mock_session.get.return_value = note
+
+    note_id = 1
+    with subtests.test('data'):
+        assert get_note_by_id(mock_session, note_id) == note
+
+    with subtests.test('get called once'):
+        mock_session.get.assert_called_once()
+
+    with subtests.test('get parameters'):
+        mock_session.get.assert_called_once_with(Note, note_id)
+    
 
 

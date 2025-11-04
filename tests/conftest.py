@@ -1,9 +1,14 @@
 from main import app
 from db import get_db
 
-
 import pytest
 from unittest.mock import Mock
+
+
+@pytest.fixture
+def mock_session():
+    '''Mock de SQLAlchemy Session'''
+    return Mock()
 
 
 @pytest.fixture

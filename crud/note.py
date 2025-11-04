@@ -9,7 +9,7 @@ def get_notes(session:Session) -> list[Note]:
     return session.scalars(select(Note)).all()
 
 
-def get_note_by_id(id:int, session:Session) -> Note | None:
+def get_note_by_id(session:Session, id:int) -> Note | None:
     '''
     Operación CRUD que devuelve la Note con id especificado.
     Si no existe, devuelve None

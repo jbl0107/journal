@@ -24,11 +24,6 @@ def magic_mock_session():
 
 
 @pytest.fixture
-def mock_session():
-    '''Mock de SQLAlchemy Session'''
-    return Mock()
-
-@pytest.fixture
 def mock_e_orig():
     '''
     Fixture que simula el atributo `diag` de `e.orig` para una excepción
