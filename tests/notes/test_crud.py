@@ -1,12 +1,15 @@
-from crud.note import get_notes, get_note_by_id
+from crud.note import get_notes, get_note_by_id, create_note
 from models.note import Note
-from models.user import User
+from schemas.note import NoteCreate
 
 import pytest
 
 
 ## FIXTURE ##
 
+@pytest.fixture
+def note(user_pepe):
+    return Note(id=1, title='Titulo 1', description='Descripción 1', user_id=1, user=user_pepe)
 
 ## FIN FIXTURE ##
 
@@ -62,3 +65,29 @@ def test_get_note_by_id(mock_session, note, subtests):
     
 
 
+def test_create_note_ok(magic_mock_session, note, subtests):
+    '''
+    Test unitario que comprueba el funcionamiento de la función CRUD
+    create_note en un caso exitoso (inserta una nueva Note correctamente)
+    ''' 
+
+    result = create_note(magic_mock_session, NoteCreate.model_validate(note))
+    called_note = magic_mock_session.add.call_args.args[0]
+
+    fields = ['title', 'description', 'user_id']
+
+    with subtests.test('correct fields passed to add'):
+         assert isinstance(called_note, Note)
+         for field in fields:
+             assert getattr(called_note, field) == getattr(note, field)
+
+    with subtests.test('correct return value from create_note'):
+        assert isinstance(result, Note)
+        for field in fields:
+            assert getattr(result, field) == getattr(note, field)
+    
+    with subtests.test('add called once'):
+        magic_mock_session.add.assert_called_once()
+
+    with subtests.test('begin called once'):
+        magic_mock_session.begin.assert_called_once()

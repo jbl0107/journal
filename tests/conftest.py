@@ -1,8 +1,10 @@
 from main import app
 from db import get_db
+from models.user import User
 
 import pytest
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock
+from sqlalchemy.orm import Session
 
 
 @pytest.fixture
@@ -31,3 +33,20 @@ def mock_db_session():
     yield mock_session
 
     app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+def magic_mock_session():
+    '''Mock de SQLAlchemy Session con spec para verificar métodos.'''
+    return MagicMock(spec=Session)
+
+@pytest.fixture
+def user_pepe():
+    """Usuario base reutilizable."""
+    return User(
+        id=1,
+        first_name='Pepe',
+        last_name='Rodriguez',
+        username='pep_ul',
+        age=24
+    )

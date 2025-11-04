@@ -18,12 +18,6 @@ def user():
 
 
 @pytest.fixture
-def magic_mock_session():
-    '''Mock de SQLAlchemy Session con spec para verificar métodos.'''
-    return MagicMock(spec=Session)
-
-
-@pytest.fixture
 def mock_e_orig():
     '''
     Fixture que simula el atributo `diag` de `e.orig` para una excepción

@@ -14,18 +14,6 @@ client = TestClient(app)
 
 ## FIXTURE ##
 
-@pytest.fixture
-def user_pepe():
-    """Usuario base reutilizable."""
-    return User(
-        id=1,
-        first_name='Pepe',
-        last_name='Rodriguez',
-        username='pep_ul',
-        age=24
-    )
-
-
 @pytest.fixture(params=[
     {'id': 1, 'title': 'Título', 'description': 'Descripción'},
     {'id': 2, 'title': 'Título 2', 'description': 'Descripción 2'}
