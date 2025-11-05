@@ -1,4 +1,5 @@
 from models.note import Note
+from models.user import User
 from schemas.note import NoteCreate
 
 from sqlalchemy import select
@@ -22,6 +23,11 @@ def create_note(session:Session, note: NoteCreate) -> Note:
     '''
     Operación CRUD que inserta un registro en la tabla Note
     '''
+
+    user = session.get(User, note.user_id)
+    if user is None:
+        return None #user not found
+    
     new_note = Note(**note.model_dump())
 
     with session.begin():
