@@ -1,6 +1,7 @@
 from models.note import Note
 from models.user import User
 from schemas.note import NoteCreate
+from exceptions.note_exceptions import UserNotFound
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -24,13 +25,14 @@ def create_note(session:Session, note: NoteCreate) -> Note:
     Operación CRUD que inserta un registro en la tabla Note
     '''
 
-    user = session.get(User, note.user_id)
-    if user is None:
-        return None #user not found
-    
-    new_note = Note(**note.model_dump())
-
     with session.begin():
+        user = session.get(User, note.user_id)
+        if user is None:
+            raise UserNotFound(note.user_id)
+        
+        new_note = Note(**note.model_dump())
+
         session.add(new_note)
+
 
     return new_note
