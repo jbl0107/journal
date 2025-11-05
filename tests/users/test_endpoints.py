@@ -31,26 +31,6 @@ client = TestClient(app)
 ### FIXTURES ###
 
 @pytest.fixture
-def magic_mock_session():
-    '''
-    Fixture que crea una sesión MagicMock para endpoints que dependen de `get_db`.
-    - Sobrescribe `get_db` para usar la sesión MagicMock en lugar de la DB real.
-    - Solo afecta a este test en memoria y se limpia automáticamente después.
-    '''
-    magic_mock_session = MagicMock(spec=Session)
-
-    def override_get_db():
-        yield magic_mock_session
-
-    app.dependency_overrides[get_db] = override_get_db
-
-    yield magic_mock_session
-
-    app.dependency_overrides.pop(get_db, None)
-
-
-
-@pytest.fixture
 def magic_mock_session_with_add(magic_mock_session):
     '''
     Fixture que crea una sesión MagicMock para endpoints que dependen de `get_db`

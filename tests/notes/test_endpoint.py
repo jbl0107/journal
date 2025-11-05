@@ -1,6 +1,6 @@
 from schemas.note import NoteRead, NoteCreate
+from schemas.user import UserRead
 from models.note import Note
-from models.user import User
 from main import app
 from tests.shared_helpers import call_endpoint
 from .constants import BASE_URL
@@ -42,7 +42,7 @@ def note_create(request):
 
 
 @pytest.fixture
-def magic_mock_session_with_add(magic_mock_session):
+def magic_mock_session_with_add(magic_mock_session, user_pepe):
     '''
     Fixture que crea una sesión MagicMock para endpoints que dependen de `get_db`
     con el método add definido
@@ -50,6 +50,7 @@ def magic_mock_session_with_add(magic_mock_session):
 
     def fake_add(note):
         note.id = 1
+        note.user = user_pepe
         return note
     
     magic_mock_session.add.side_effect = fake_add
@@ -127,16 +128,13 @@ def test_create_ok(magic_mock_session_with_add, note_create, user_pepe, subtests
 
     result = call_endpoint(client = client, method='post', base_url = BASE_URL, payload=note_create.model_dump())
 
-    data = NoteRead.model_validate(result.json())
-
-    
-
-    # data.model_dump(exclude={'user', 'id'}) 
+    note_out = NoteRead.model_validate(result.json())
 
     with subtests.test('status code'):
         assert result.status_code == status.HTTP_201_CREATED
 
     with subtests.test('data validation'):
-        data.user = user_pepe
+        assert note_out.user == UserRead.model_validate(user_pepe)
+        assert note_out.model_dump(exclude={'id', 'user'}) == note_create.model_dump(exclude={'user_id'})
 
     
