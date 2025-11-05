@@ -1,5 +1,6 @@
 from crud.note import get_notes, get_note_by_id, create_note
 from models.note import Note
+from models.user import User
 from schemas.note import NoteCreate
 
 import pytest
@@ -91,3 +92,28 @@ def test_create_note_ok(magic_mock_session, note, subtests):
 
     with subtests.test('begin called once'):
         magic_mock_session.begin.assert_called_once()
+
+
+def test_create_note_user_not_found(magic_mock_session, note, subtests):
+    '''
+    Test unitario que comprueba que el CRUD create_note devuelve
+    None cuando el usuario con id especificado no existe
+    '''
+
+    magic_mock_session.get.return_value = None
+
+    result = create_note(magic_mock_session, NoteCreate.model_validate(note))
+
+    with subtests.test('returns None when user not found'):
+        assert result is None
+
+    with subtests.test('get called once'):
+        magic_mock_session.get.assert_called_once()
+
+    with subtests.test('get arguments'):
+        magic_mock_session.get.assert_called_once_with(User, note.user_id)
+
+    with subtests.test('add and begin not called'):
+        magic_mock_session.begin.assert_not_called()
+        magic_mock_session.add.assert_not_called()
+
