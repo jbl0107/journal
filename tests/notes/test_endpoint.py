@@ -1,4 +1,4 @@
-from schemas.note import NoteRead
+from schemas.note import NoteRead, NoteCreate
 from models.note import Note
 from models.user import User
 from main import app
@@ -31,6 +31,30 @@ def note(request, user_pepe, mock_db_session):
 
     mock_db_session.get.return_value = note_obj
     return note_obj
+
+@pytest.fixture(params=[
+    NoteCreate(title='ab', description='asdfg', user_id=1),
+    NoteCreate(title='Lorem ipsum dolor si', description='Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis p', user_id=1),
+    NoteCreate(title='Titulo de ejemplo', description='Descripcion de ejemplo', user_id=1)
+], ids=['min limits', 'max limits', 'normal note'])
+def note_create(request):
+    return request.param
+
+
+@pytest.fixture
+def magic_mock_session_with_add(magic_mock_session):
+    '''
+    Fixture que crea una sesión MagicMock para endpoints que dependen de `get_db`
+    con el método add definido
+    '''
+
+    def fake_add(note):
+        note.id = 1
+        return note
+    
+    magic_mock_session.add.side_effect = fake_add
+    return magic_mock_session
+        
 
 ## FIN FIXTURE ##
 
@@ -92,3 +116,27 @@ def test_get_by_id_not_found(mock_db_session):
 
     assert response.status_code == status.HTTP_404_NOT_FOUND        
 
+
+## TESTS CREATE ##
+
+def test_create_ok(magic_mock_session_with_add, note_create, user_pepe, subtests):
+    '''
+    Test unitario que comprueba que el endpoint create devuelve 201
+    cuando una nota ha sido creada y que los datos devueltos son correctos
+    '''
+
+    result = call_endpoint(client = client, method='post', base_url = BASE_URL, payload=note_create.model_dump())
+
+    data = NoteRead.model_validate(result.json())
+
+    
+
+    # data.model_dump(exclude={'user', 'id'}) 
+
+    with subtests.test('status code'):
+        assert result.status_code == status.HTTP_201_CREATED
+
+    with subtests.test('data validation'):
+        data.user = user_pepe
+
+    
