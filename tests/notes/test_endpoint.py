@@ -4,10 +4,12 @@ from models.note import Note
 from main import app
 from tests.shared_helpers import call_endpoint
 from .constants import BASE_URL
+from exceptions.note_exceptions import UserNotFound
 
 import pytest
-from fastapi.testclient import TestClient
 from fastapi import status
+from fastapi.testclient import TestClient
+from unittest.mock import patch
 
 client = TestClient(app)
 
@@ -137,4 +139,16 @@ def test_create_ok(magic_mock_session_with_add, note_create, user_pepe, subtests
         assert note_out.user == UserRead.model_validate(user_pepe)
         assert note_out.model_dump(exclude={'id', 'user'}) == note_create.model_dump(exclude={'user_id'})
 
+
+@patch('routers.note.create_note')
+def test_create_user_no_exists(mock_create_note):
+    '''
+    Test unitario que comprueba que el endpoint create devuelve un 400
+    cuando el usuario asociado a la nota no existe
+    '''
+    note = NoteCreate(title='ab', description='asdfg', user_id=111)
+    mock_create_note.side_effect = UserNotFound(note.user_id)
     
+    result = call_endpoint(client = client, method='post', base_url = BASE_URL, payload=note.model_dump())
+
+    assert result.status_code == status.HTTP_400_BAD_REQUEST
