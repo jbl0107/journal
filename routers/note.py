@@ -1,6 +1,6 @@
 from db import get_db
-from schemas.note import NoteRead, NoteCreate
-from crud.note import get_notes, get_note_by_id, create_note
+from schemas.note import NoteRead, NoteCreate, NoteUpdate, NotePatch
+from crud.note import get_notes, get_note_by_id, create_note, update_note
 from exceptions.note_exceptions import UserNotFound
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -37,4 +37,17 @@ def create(note_create: NoteCreate, session: Session = Depends(get_db)) -> NoteR
 
     except UserNotFound as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
+    
+
+@router.put('/{id}', responses={
+    404:{'description': 'La nota con id especificado no existe'}
+})
+def put(id:int, note_update: NoteUpdate, session:Session = Depends(get_db)) -> NoteRead:
+    '''Actualiza una nota del sistema'''
+
+    note = update_note(session, id, note_update)
+    if note is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='La nota con id especificado no existe')
+    
+    return note
     
