@@ -17,7 +17,11 @@ class NoteRead(NoteBase):
 class NoteCreate(NoteBase):
     user_id:int
 
+
 class NoteUpdate(NoteBase):
+    pass
+
+class NotePatch(NoteBase):
     title:Optional[str] = Field(None, max_length=20)
     description:Optional[str] = Field(None, min_length=5, max_length=150)
 

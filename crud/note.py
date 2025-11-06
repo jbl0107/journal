@@ -1,6 +1,6 @@
 from models.note import Note
 from models.user import User
-from schemas.note import NoteCreate
+from schemas.note import NoteCreate, NoteUpdate, NotePatch
 from exceptions.note_exceptions import UserNotFound
 
 from sqlalchemy import select
@@ -36,3 +36,23 @@ def create_note(session:Session, note: NoteCreate) -> Note:
 
 
     return new_note
+
+
+def update_note(session:Session, id:int, note_update: NoteUpdate | NotePatch) -> Note:
+    '''
+    Operación CRUD que actualiza una Note (PUT/PATCH)
+    '''
+
+    with session.begin():
+        note = session.get(Note, id)
+        if note is None:
+            return None
+        
+        for field in note_update.model_fields_set:
+            setattr(note, field, getattr(note_update, field))
+
+        
+    return note
+
+
+
