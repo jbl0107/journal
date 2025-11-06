@@ -27,7 +27,7 @@ def get_by_id(id:int, session:Session = Depends(get_db)) -> NoteRead:
 
 
 @router.post('/', status_code=status.HTTP_201_CREATED, responses={
-    404:{'description':'El usuario con id especificado no existe'}
+    400:{'description':'El usuario con id especificado no existe'}
 })
 def create(note_create: NoteCreate, session: Session = Depends(get_db)) -> NoteRead:
     '''Crea una nueva nota en el sistema'''
@@ -36,5 +36,5 @@ def create(note_create: NoteCreate, session: Session = Depends(get_db)) -> NoteR
         return create_note(session, note_create)
 
     except UserNotFound as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
     
