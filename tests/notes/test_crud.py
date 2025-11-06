@@ -1,7 +1,7 @@
-from crud.note import get_notes, get_note_by_id, create_note
+from crud.note import get_notes, get_note_by_id, create_note, update_note
 from models.note import Note
 from models.user import User
-from schemas.note import NoteCreate
+from schemas.note import NoteCreate, NoteUpdate, NotePatch
 from exceptions.note_exceptions import UserNotFound
 
 
@@ -13,6 +13,15 @@ import pytest
 @pytest.fixture
 def note(user_pepe):
     return Note(id=1, title='Titulo 1', description='Descripción 1', user_id=1, user=user_pepe)
+
+
+@pytest.fixture(params=[
+    NoteUpdate(title='Nuevo titulo', description='Nueva description'),
+    NotePatch(title='Cambio en el titulo')
+], ids=['put', 'patch'])
+def note_put_patch(request):
+    return request.param
+
 
 ## FIN FIXTURE ##
 
@@ -108,15 +117,49 @@ def test_create_note_user_not_found(magic_mock_session, note, subtests):
         with pytest.raises(UserNotFound):
             create_note(magic_mock_session, NoteCreate.model_validate(note))
 
-    with subtests.test('get called once'):
-        magic_mock_session.get.assert_called_once()
-
-    with subtests.test('get arguments'):
-        magic_mock_session.get.assert_called_once_with(User, note.user_id)
 
     with subtests.test('begin called once'):
         magic_mock_session.begin.assert_called_once()
 
+    with subtests.test('get called once with'):
+        magic_mock_session.get.assert_called_once_with(User, note.user_id)
+
     with subtests.test('add not called'):
         magic_mock_session.add.assert_not_called()
 
+
+def test_update_note_ok(magic_mock_session, note, note_put_patch, subtests):
+    '''Test que valida actualización exitosa (PUT/PATCH) de nota existente'''
+
+    magic_mock_session.get.return_value = note
+
+    result = update_note(magic_mock_session, note.id, note_put_patch)
+
+    with subtests.test('data validation'):
+        if isinstance(note_put_patch, NoteUpdate):
+            NoteUpdate.model_validate(result) == note_put_patch
+        else:
+            assert all(getattr(result, field) == getattr(note_put_patch, field) for field in note_put_patch.model_fields_set)
+
+    with subtests.test('begin called once'):
+        magic_mock_session.begin.assert_called_once()
+
+    with subtests.test('get called once with'):
+        magic_mock_session.get.assert_called_once_with(Note, note.id)
+
+
+def test_update_note_not_found(magic_mock_session, note_put_patch, subtests):
+    '''Test que valida que update_note devuelve None cuando la nota no existe'''
+
+    magic_mock_session.get.return_value = None
+    note_id = 1000
+    result = update_note(magic_mock_session, note_id, note_put_patch)
+
+    with subtests.test('result is None'):
+        assert result is None
+
+    with subtests.test('begin called once'):
+        magic_mock_session.begin.assert_called_once()
+
+    with subtests.test('get called once with'):
+        magic_mock_session.get.assert_called_once_with(Note, note_id)
