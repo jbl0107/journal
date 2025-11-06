@@ -14,12 +14,12 @@ def get_all(session:Session = Depends(get_db)) -> list[NoteRead]:
     return get_notes(session)
 
 
-@router.get('/{id}', responses={
+@router.get('/{note_id}', responses={
     404:{'description':'La nota con id especificado no existe'}
 })
-def get_by_id(id:int, session:Session = Depends(get_db)) -> NoteRead:
+def get_by_id(note_id:int, session:Session = Depends(get_db)) -> NoteRead:
     '''Recupera la información de una nota específica'''
-    note = get_note_by_id(session, id)
+    note = get_note_by_id(session, note_id)
     if note is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='La nota con id especificado no existe')
     
@@ -39,15 +39,31 @@ def create(note_create: NoteCreate, session: Session = Depends(get_db)) -> NoteR
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
     
 
-@router.put('/{id}', responses={
+@router.put('/{note_id}', responses={
     404:{'description': 'La nota con id especificado no existe'}
 })
-def put(id:int, note_update: NoteUpdate, session:Session = Depends(get_db)) -> NoteRead:
+def put(note_id:int, note_put: NoteUpdate, session:Session = Depends(get_db)) -> NoteRead:
     '''Actualiza una nota del sistema'''
 
-    note = update_note(session, id, note_update)
+    return _handle_update(note_id, note_put, session)
+
+
+@router.patch('/{note_id}', responses={
+    404:{'description': 'La nota con id especificado no existe'}
+})
+def patch(note_id:int, note_patch:NotePatch, session:Session = Depends(get_db)) -> NoteRead:
+    '''Actualiza una nota del sistema parcialmente'''
+
+    return _handle_update(note_id, note_patch, session)
+    
+
+
+
+
+
+def _handle_update(note_id:int, note_update: NoteUpdate | NotePatch, session:Session) -> NoteRead:
+    note = update_note(session, note_id, note_update)
     if note is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='La nota con id especificado no existe')
     
     return note
-    
