@@ -1,6 +1,6 @@
 from db import get_db
 from schemas.note import NoteRead, NoteCreate, NoteUpdate, NotePatch
-from crud.note import get_notes, get_note_by_id, create_note, update_note
+from crud.note import get_notes, get_note_by_id, create_note, update_note, delete_note
 from exceptions.note_exceptions import UserNotFound
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -55,6 +55,17 @@ def patch(note_id:int, note_patch:NotePatch, session:Session = Depends(get_db)) 
     '''Actualiza una nota del sistema parcialmente'''
 
     return _handle_update(note_id, note_patch, session)
+    
+
+@router.delete('/{note_id}', status_code=status.HTTP_204_NO_CONTENT, responses={
+    404:{'description': 'La nota con id especificado no existe'}
+})
+def delete(note_id, session:Session = Depends(get_db)) -> None:
+    '''Elimina una nota del sistema'''
+
+    note = delete_note(session, note_id)
+    if note is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='La nota con id especificado no existe')
     
 
 
