@@ -1,4 +1,4 @@
-from crud.note import get_notes, get_note_by_id, create_note, update_note
+from crud.note import get_notes, get_note_by_id, create_note, update_note, delete_note
 from models.note import Note
 from models.user import User
 from schemas.note import NoteCreate, NoteUpdate, NotePatch
@@ -163,3 +163,50 @@ def test_update_note_not_found(magic_mock_session, note_put_patch, subtests):
 
     with subtests.test('get called once with'):
         magic_mock_session.get.assert_called_once_with(Note, note_id)
+
+
+def test_delete_ok(magic_mock_session, note, subtests):
+    '''
+    Test unitario que prueba el borrado de
+    un usuario registrado en el sistema
+    '''
+
+    magic_mock_session.get.return_value = note
+
+    note_id = 1
+    result = delete_note(magic_mock_session, note_id)
+
+
+    with subtests.test('get called once with'):
+        magic_mock_session.get.assert_called_once_with(Note, note_id)
+
+    with subtests.test('begin and delete called once'):
+        magic_mock_session.begin.assert_called_once()
+        magic_mock_session.delete.assert_called_once_with(note)
+
+    with subtests.test('data returned'):
+        assert result is note
+
+
+def test_delete_note_none(magic_mock_session, subtests):
+    '''
+    Test unitario que prueba el intento de borrado
+    de una note no registrada en el sistema
+    '''
+    
+    magic_mock_session.get.return_value = None
+
+    note_id = 111
+    result = delete_note(magic_mock_session, note_id)
+
+    with subtests.test('get called once with'):
+        magic_mock_session.get.assert_called_once_with(Note, note_id)
+
+    with subtests.test('begin called'):
+        magic_mock_session.begin.assert_called_once()
+
+    with subtests.test('delete not called'):
+        magic_mock_session.delete.assert_not_called()
+
+    with subtests.test('data returned'):
+        assert result is None
