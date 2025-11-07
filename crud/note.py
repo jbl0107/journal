@@ -39,9 +39,7 @@ def create_note(session:Session, note: NoteCreate) -> Note:
 
 
 def update_note(session:Session, id:int, note_update: NoteUpdate | NotePatch) -> Note:
-    '''
-    Operación CRUD que actualiza una Note (PUT/PATCH)
-    '''
+    '''Operación CRUD que actualiza una Note (PUT/PATCH)'''
 
     with session.begin():
         note = session.get(Note, id)
@@ -54,5 +52,17 @@ def update_note(session:Session, id:int, note_update: NoteUpdate | NotePatch) ->
         
     return note
 
+
+def delete_note(session:Session, id:int) -> Note | None:
+    '''Operación CRUD que elimina una Note'''
+
+    with session.begin():
+        note = session.get(Note, id)
+        if note is None:
+            return None        
+
+        session.delete(note)
+
+    return note
 
 
