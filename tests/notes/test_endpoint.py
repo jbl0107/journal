@@ -63,7 +63,7 @@ def magic_mock_session_with_add(magic_mock_session, user_pepe):
 ## FIN FIXTURE ##
 
 
-## TESTS GET_ALL ##
+## TESTS GET_NOTES ##
 
 @pytest.mark.parametrize('notes', [
     [],
@@ -74,7 +74,7 @@ def magic_mock_session_with_add(magic_mock_session, user_pepe):
         Note(id=3, title='Titulo 3', description='descripcion 3', user_id=1)
     ]
 ], ids=['empty list', 'one-note list', 'some-note list'])
-def test_get_all(mock_db_session, notes, user_pepe, subtests):
+def test_get_notes(mock_db_session, notes, user_pepe, subtests):
     '''
     Test que valida que el endpoint /notes devuelve 200 OK junto
     con los datos correctos
@@ -93,11 +93,11 @@ def test_get_all(mock_db_session, notes, user_pepe, subtests):
 
 
 
-## TESTS GET_BY_ID ##
+## TESTS GET_NOTE ##
 
-def test_get_by_id_ok(note, subtests):
+def test_get_note_ok(note, subtests):
     '''
-    Test unitario para validar que el endpoint get_by_id devuelve un
+    Test unitario para validar que el endpoint get_note devuelve un
     código 200 OK y que los datos son correctos 
     '''
     result = call_endpoint(client=client, method='get_by_id', base_url=BASE_URL, resource_id=note.id)
@@ -110,9 +110,9 @@ def test_get_by_id_ok(note, subtests):
 
 
 
-def test_get_by_id_not_found(mock_db_session):
+def test_get_note_not_found(mock_db_session):
     '''
-    Test unitario para validar que el endpoint get_by_id devuelve un
+    Test unitario para validar que el endpoint get_note devuelve un
     404 NOT FOUND cuando la Note con id especificado no existe
     '''
     mock_db_session.get.return_value = None
@@ -121,11 +121,11 @@ def test_get_by_id_not_found(mock_db_session):
     assert response.status_code == status.HTTP_404_NOT_FOUND        
 
 
-## TESTS CREATE ##
+## TESTS CREATE_NOTE ##
 
-def test_create_ok(magic_mock_session_with_add, note_create, user_pepe, subtests):
+def test_create_note_ok(magic_mock_session_with_add, note_create, user_pepe, subtests):
     '''
-    Test unitario que comprueba que el endpoint create devuelve 201
+    Test unitario que comprueba que el endpoint create_note devuelve 201
     cuando una nota ha sido creada y que los datos devueltos son correctos
     '''
 
@@ -141,10 +141,10 @@ def test_create_ok(magic_mock_session_with_add, note_create, user_pepe, subtests
         assert note_out.model_dump(exclude={'id', 'user'}) == note_create.model_dump(exclude={'user_id'})
 
 
-@patch('routers.note.create_note')
-def test_create_user_no_exists(mock_create_note):
+@patch('routers.note.create')
+def test_create_note_user_not_found(mock_create_note):
     '''
-    Test unitario que comprueba que el endpoint create devuelve un 400
+    Test unitario que comprueba que el endpoint create_note devuelve un 400
     cuando el usuario asociado a la nota no existe
     '''
     note = NoteCreate(title='ab', description='asdfg', user_id=111)
@@ -155,13 +155,13 @@ def test_create_user_no_exists(mock_create_note):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
-## TESTS UPDATE ##
+## TESTS UPDATE_NOTE ##
 
 @pytest.mark.parametrize(['method', 'note_update'], [
     ('put', NoteUpdate(title='Titulo actualizado', description='Misma descripcion')),
     ('patch', NotePatch(title='Cambio en el titulo'))
 ], ids=['put', 'patch-partial'])
-def test_update_ok(magic_mock_session, user_pepe, method, note_update: NoteUpdate | NotePatch, subtests):
+def test_update_note_ok(magic_mock_session, user_pepe, method, note_update: NoteUpdate | NotePatch, subtests):
     '''Test que valida que los endpoints PUT/PATCH devuelven codigo 200 y datos correctos'''
 
     note = Note(
@@ -212,10 +212,10 @@ def test_update_note_not_found(magic_mock_session, method):
 
 
 
-## TESTS DELETE ##
+## TESTS DELETE_NOTE ##
 
-def test_delete_ok(magic_mock_session, user_pepe):
-    '''Test básico para asegurar que el endpoint `/note/{id}` responde 204 OK'''
+def test_delete_note_ok(magic_mock_session, user_pepe):
+    '''Test básico para asegurar que el endpoint delete_note responde 204 OK'''
 
     magic_mock_session.get.return_value = Note(id=1, title='titulo', description='descripcion', user_id=1, user=user_pepe)
     response = call_endpoint(client=client, method='delete', base_url=BASE_URL, resource_id=1)
@@ -223,9 +223,9 @@ def test_delete_ok(magic_mock_session, user_pepe):
     assert response.status_code == status.HTTP_204_NO_CONTENT
         
     
-def test_delete_not_found(magic_mock_session):
+def test_delete_note_not_found(magic_mock_session):
     '''
-    Test básico para asegurar que el endpoint `/note/{id}` responde 404 en caso
+    Test básico para asegurar que el endpoint delete_note responde 404 en caso
     de que la nota con dicho ID no exista en el sistema
     '''
     magic_mock_session.get.return_value = None

@@ -1,4 +1,4 @@
-from crud.note import get_notes, get_note_by_id, create_note, update_note, delete_note
+from crud.note import get_all, get_by_id, create, update, delete
 from models.note import Note
 from models.user import User
 from schemas.note import NoteCreate, NoteUpdate, NotePatch
@@ -33,14 +33,14 @@ def note_put_patch(request):
         Note(id=2, title='Titulo con 20 caract', description='Otra descripción más larga', user_id=1)
     ]
 ), ids=['empty list', 'one note', 'limit notes'])
-def test_get_notes(mock_session, notes, subtests):
+def test_get_all(mock_session, notes, subtests):
     ''' 
-    Test unitario que determina si la función CRUD get_notes devuelve
+    Test unitario que determina si la función CRUD get_all devuelve
     los datos correctos, además de comprobar la estructura del SQL
     '''
 
     mock_session.scalars.return_value.all.return_value = notes
-    result = get_notes(mock_session)
+    result = get_all(mock_session)
 
     with subtests.test('data'):
         assert result == notes
@@ -58,7 +58,7 @@ def test_get_notes(mock_session, notes, subtests):
     Note(id=1, title='Titulo 1', description='Descripción 1', user_id=1),
     None
 ], ids=['note', 'None'])
-def test_get_note_by_id(mock_session, note, subtests):
+def test_get_by_id(mock_session, note, subtests):
     '''
     Test unitario que comprueba si la operación CRUD get_by_id
     devuelve los datos correctos. También comprueba la estructura SQL
@@ -67,7 +67,7 @@ def test_get_note_by_id(mock_session, note, subtests):
 
     note_id = 1
     with subtests.test('data'):
-        assert get_note_by_id(mock_session, note_id) == note
+        assert get_by_id(mock_session, note_id) == note
 
     with subtests.test('get called once'):
         mock_session.get.assert_called_once()
@@ -77,13 +77,13 @@ def test_get_note_by_id(mock_session, note, subtests):
     
 
 
-def test_create_note_ok(magic_mock_session, note, subtests):
+def test_create_ok(magic_mock_session, note, subtests):
     '''
     Test unitario que comprueba el funcionamiento de la función CRUD
-    create_note en un caso exitoso (inserta una nueva Note correctamente)
+    create en un caso exitoso (inserta una nueva Note correctamente)
     ''' 
 
-    result = create_note(magic_mock_session, NoteCreate.model_validate(note))
+    result = create(magic_mock_session, NoteCreate.model_validate(note))
     called_note = magic_mock_session.add.call_args.args[0]
 
     fields = ['title', 'description', 'user_id']
@@ -105,9 +105,9 @@ def test_create_note_ok(magic_mock_session, note, subtests):
         magic_mock_session.begin.assert_called_once()
 
 
-def test_create_note_user_not_found(magic_mock_session, note, subtests):
+def test_create_not_found(magic_mock_session, note, subtests):
     '''
-    Test unitario que comprueba que el CRUD create_note lanza la
+    Test unitario que comprueba que la operación CRUD create lanza la
     excepcion UserNotFound cuando el usuario con id especificado no existe
     '''
 
@@ -115,7 +115,7 @@ def test_create_note_user_not_found(magic_mock_session, note, subtests):
 
     with subtests.test('raises UserNotFound when user not found'):
         with pytest.raises(UserNotFound):
-            create_note(magic_mock_session, NoteCreate.model_validate(note))
+            create(magic_mock_session, NoteCreate.model_validate(note))
 
 
     with subtests.test('begin called once'):
@@ -128,12 +128,12 @@ def test_create_note_user_not_found(magic_mock_session, note, subtests):
         magic_mock_session.add.assert_not_called()
 
 
-def test_update_note_ok(magic_mock_session, note, note_put_patch, subtests):
-    '''Test que valida actualización exitosa (PUT/PATCH) de nota existente'''
+def test_update_ok(magic_mock_session, note, note_put_patch, subtests):
+    '''Test que valida la operación CRUD update de una Note en caso exitoso'''
 
     magic_mock_session.get.return_value = note
 
-    result = update_note(magic_mock_session, note.id, note_put_patch)
+    result = update(magic_mock_session, note.id, note_put_patch)
 
     with subtests.test('data validation'):
         if isinstance(note_put_patch, NoteUpdate):
@@ -148,12 +148,12 @@ def test_update_note_ok(magic_mock_session, note, note_put_patch, subtests):
         magic_mock_session.get.assert_called_once_with(Note, note.id)
 
 
-def test_update_note_not_found(magic_mock_session, note_put_patch, subtests):
-    '''Test que valida que update_note devuelve None cuando la nota no existe'''
+def test_update_not_found(magic_mock_session, note_put_patch, subtests):
+    '''Test que valida que update devuelve None cuando la nota no existe'''
 
     magic_mock_session.get.return_value = None
     note_id = 1000
-    result = update_note(magic_mock_session, note_id, note_put_patch)
+    result = update(magic_mock_session, note_id, note_put_patch)
 
     with subtests.test('result is None'):
         assert result is None
@@ -166,15 +166,12 @@ def test_update_note_not_found(magic_mock_session, note_put_patch, subtests):
 
 
 def test_delete_ok(magic_mock_session, note, subtests):
-    '''
-    Test unitario que prueba el borrado de
-    un usuario registrado en el sistema
-    '''
+    '''Test que valida la operación CRUD delete de una Note en caso exitoso'''
 
     magic_mock_session.get.return_value = note
 
     note_id = 1
-    result = delete_note(magic_mock_session, note_id)
+    result = delete(magic_mock_session, note_id)
 
 
     with subtests.test('get called once with'):
@@ -188,16 +185,13 @@ def test_delete_ok(magic_mock_session, note, subtests):
         assert result is note
 
 
-def test_delete_note_none(magic_mock_session, subtests):
-    '''
-    Test unitario que prueba el intento de borrado
-    de una note no registrada en el sistema
-    '''
+def test_delete_not_found(magic_mock_session, subtests):
+    '''Test que valida que delete devuelve None cuando la nota no existe'''
     
     magic_mock_session.get.return_value = None
 
     note_id = 111
-    result = delete_note(magic_mock_session, note_id)
+    result = delete(magic_mock_session, note_id)
 
     with subtests.test('get called once with'):
         magic_mock_session.get.assert_called_once_with(Note, note_id)

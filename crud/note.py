@@ -7,12 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 
-def get_notes(session:Session) -> list[Note]:
+def get_all(session:Session) -> list[Note]:
     ''' Operación CRUD que obtiene todos los usuarios'''
     return session.scalars(select(Note)).all()
 
 
-def get_note_by_id(session:Session, id:int) -> Note | None:
+def get_by_id(session:Session, id:int) -> Note | None:
     '''
     Operación CRUD que devuelve la Note con id especificado.
     Si no existe, devuelve None
@@ -20,7 +20,7 @@ def get_note_by_id(session:Session, id:int) -> Note | None:
     return session.get(Note, id)
 
 
-def create_note(session:Session, note: NoteCreate) -> Note:
+def create(session:Session, note: NoteCreate) -> Note:
     '''
     Operación CRUD que inserta un registro en la tabla Note
     '''
@@ -38,7 +38,7 @@ def create_note(session:Session, note: NoteCreate) -> Note:
     return new_note
 
 
-def update_note(session:Session, id:int, note_update: NoteUpdate | NotePatch) -> Note:
+def update(session:Session, id:int, note_update: NoteUpdate | NotePatch) -> Note:
     '''Operación CRUD que actualiza una Note (PUT/PATCH)'''
 
     with session.begin():
@@ -53,7 +53,7 @@ def update_note(session:Session, id:int, note_update: NoteUpdate | NotePatch) ->
     return note
 
 
-def delete_note(session:Session, id:int) -> Note | None:
+def delete(session:Session, id:int) -> Note | None:
     '''Operación CRUD que elimina una Note'''
 
     with session.begin():
