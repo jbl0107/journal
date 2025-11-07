@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 def call_endpoint(client:TestClient, method:str, base_url:str, resource_id:int | None = None, payload:dict | None = None):
-    '''Helper: llama a get/get_by_id, post, put o delete segun method'''
+    '''Helper: llama a get/get_by_id, post, put, patch o delete segun method'''
 
     base_url = base_url.rstrip('/')
 

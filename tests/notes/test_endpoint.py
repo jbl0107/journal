@@ -1,4 +1,4 @@
-from schemas.note import NoteRead, NoteCreate
+from schemas.note import NoteRead, NoteCreate, NoteUpdate, NotePatch
 from schemas.user import UserRead
 from models.note import Note
 from main import app
@@ -21,7 +21,7 @@ client = TestClient(app)
     {'id': 2, 'title': 'Título 2', 'description': 'Descripción 2'}
 ], ids=['Note 1', 'Note 2'])
 def note(request, user_pepe, mock_db_session):
-    """Fixture parametrizado para notas con mock de la sesión."""
+    '''Fixture parametrizado para notas con mock de la sesión'''
     data = request.param
     note_obj = Note(
         id=data['id'],
@@ -33,6 +33,7 @@ def note(request, user_pepe, mock_db_session):
 
     mock_db_session.get.return_value = note_obj
     return note_obj
+
 
 @pytest.fixture(params=[
     NoteCreate(title='ab', description='asdfg', user_id=1),
@@ -128,12 +129,12 @@ def test_create_ok(magic_mock_session_with_add, note_create, user_pepe, subtests
     cuando una nota ha sido creada y que los datos devueltos son correctos
     '''
 
-    result = call_endpoint(client = client, method='post', base_url = BASE_URL, payload=note_create.model_dump())
+    response = call_endpoint(client = client, method='post', base_url = BASE_URL, payload=note_create.model_dump())
 
-    note_out = NoteRead.model_validate(result.json())
+    note_out = NoteRead.model_validate(response.json())
 
     with subtests.test('status code'):
-        assert result.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_201_CREATED
 
     with subtests.test('data validation'):
         assert note_out.user == UserRead.model_validate(user_pepe)
@@ -149,6 +150,62 @@ def test_create_user_no_exists(mock_create_note):
     note = NoteCreate(title='ab', description='asdfg', user_id=111)
     mock_create_note.side_effect = UserNotFound(note.user_id)
     
-    result = call_endpoint(client = client, method='post', base_url = BASE_URL, payload=note.model_dump())
+    response = call_endpoint(client = client, method='post', base_url = BASE_URL, payload=note.model_dump())
 
-    assert result.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+## TESTS UPDATE ##
+
+@pytest.mark.parametrize(['method', 'note_update'], [
+    ('put', NoteUpdate(title='Titulo actualizado', description='Misma descripcion')),
+    ('patch', NotePatch(title='Cambio en el titulo'))
+], ids=['put', 'patch-partial'])
+def test_update_ok(magic_mock_session, user_pepe, method, note_update: NoteUpdate | NotePatch, subtests):
+    '''Test que valida que los endpoints PUT/PATCH devuelven codigo 200 y datos correctos'''
+
+    note = Note(
+        id=1,
+        title='titulo',
+        description='description',
+        user_id=user_pepe.id,
+        user=user_pepe
+    )
+
+    magic_mock_session.get.return_value = note
+
+    expected_data = note_update.model_dump(exclude_unset=True)
+    response = call_endpoint(client=client, method=method, base_url=BASE_URL, resource_id=note.id, payload=expected_data)
+
+    with subtests.test('status code'):
+        assert response.status_code == status.HTTP_200_OK
+
+    with subtests.test('data validation'):
+        
+        response_data = response.json()
+
+        for k, v in expected_data.items():
+            assert k in response_data
+            assert response_data[k] == v
+
+
+@pytest.mark.parametrize('method', ['put', 'patch'])
+def test_update_note_not_found(magic_mock_session, method):
+    '''
+    Test que valida si los endpoints PUT/PATCH devuelven codigo 404
+    cuando la nota con id especificado no existe
+    '''
+    magic_mock_session.get.return_value = None
+
+    response = call_endpoint(
+        client=client, 
+        method=method, 
+        base_url=BASE_URL, 
+        resource_id=111,
+        payload={
+            'title':'Titulo nuevo',
+            'description':'Nueva descripcion'
+        })
+
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
