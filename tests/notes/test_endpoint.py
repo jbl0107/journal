@@ -209,3 +209,26 @@ def test_update_note_not_found(magic_mock_session, method):
 
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+
+## TESTS DELETE ##
+
+def test_delete_ok(magic_mock_session, user_pepe):
+    '''Test básico para asegurar que el endpoint `/note/{id}` responde 204 OK'''
+
+    magic_mock_session.get.return_value = Note(id=1, title='titulo', description='descripcion', user_id=1, user=user_pepe)
+    response = call_endpoint(client=client, method='delete', base_url=BASE_URL, resource_id=1)
+
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+        
+    
+def test_delete_not_found(magic_mock_session):
+    '''
+    Test básico para asegurar que el endpoint `/note/{id}` responde 404 en caso
+    de que la nota con dicho ID no exista en el sistema
+    '''
+    magic_mock_session.get.return_value = None
+    
+    response = call_endpoint(client=client, method='delete', base_url=BASE_URL, resource_id=100)
+    assert response.status_code == status.HTTP_404_NOT_FOUND
