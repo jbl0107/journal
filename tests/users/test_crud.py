@@ -1,9 +1,8 @@
 import pytest
-from crud.user import get_users, get_user_by_id, create_user, delete_user, update_user
-from unittest.mock import Mock, MagicMock
+from crud.user import get_all, get_by_id, create, update, delete
+from unittest.mock import Mock
 from schemas.user import UserCreate, UserUpdate, UserPatch
 from models.user import User
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from exceptions.user_exceptions import UserAlreadyExists
 from models.note import Note  # Necesario en runtime para que SQLAlchemy resuelva User.notes
@@ -47,9 +46,9 @@ def user_put_patch(request):
         User(id=2, first_name='Lorem', last_name = 'ipsum', username = 'Manuel', age  = 33, password='123456')
     ]
 ), ids=['empty', 'single_user_list', 'some_users_list'])
-def test_get_users(mock_session, users, subtests):
+def test_get_all(mock_session, users, subtests):
     '''
-    Test unitario que determina si la función crud get_users devuelve 
+    Test unitario que determina si la función crud get_all devuelve 
     los datos correctos, además de comprobar la estructura del SQL
     '''
 
@@ -59,7 +58,7 @@ def test_get_users(mock_session, users, subtests):
     mock_session.scalars.return_value = mock_scalar_result
 
 
-    result = get_users(mock_session)
+    result = get_all(mock_session)
 
     with subtests.test('data'):
         assert result == users
@@ -79,9 +78,9 @@ def test_get_users(mock_session, users, subtests):
         User(id=1, first_name='Pepe', last_name = 'ultimo', username = 'pep_ul', age  = 24, password='123456'),
         None
 ), ids=['user', 'None'])
-def test_get_user_by_id(mock_session, user, subtests): # subtests -> plugin detectado auto. por pytest como fixture
+def test_get_by_id(mock_session, user, subtests): # subtests -> plugin detectado auto. por pytest como fixture
     '''
-    Test que determina si la función crud get_user_by_id devuelve 
+    Test que determina si la función crud get_by_id devuelve 
     los datos correctos, además de comprobar la estructura del SQL
     '''
 
@@ -92,7 +91,7 @@ def test_get_user_by_id(mock_session, user, subtests): # subtests -> plugin dete
 
     user_id = 1
     with subtests.test('return correct user'):
-        assert get_user_by_id(mock_session, user_id) == user
+        assert get_by_id(mock_session, user_id) == user
 
     #Comprobar que se llama a get
     with subtests.test('calls get once'):
@@ -103,13 +102,13 @@ def test_get_user_by_id(mock_session, user, subtests): # subtests -> plugin dete
 
 
 
-def test_create_user_ok(magic_mock_session, user, subtests):
+def test_create_ok(magic_mock_session, user, subtests):
     '''
-    Test unitario que comprueba el funcionamiento de la función CRUD create_user
+    Test unitario que comprueba el funcionamiento de la función CRUD create
     en un caso exitoso (inserción correcta de un nuevo usuario).
     '''
     
-    result = create_user(UserCreate.model_validate(user), magic_mock_session)
+    result = create(UserCreate.model_validate(user), magic_mock_session)
 
     called_user:User = magic_mock_session.add.call_args.args[0]
 
@@ -133,9 +132,9 @@ def test_create_user_ok(magic_mock_session, user, subtests):
 
 
 
-def test_create_user_error(magic_mock_session, mock_e_orig, user):
+def test_create_error(magic_mock_session, mock_e_orig, user):
     '''
-    Test unitario que comprueba el comportamiento de la función CRUD create_user
+    Test unitario que comprueba el comportamiento de la función CRUD create
     cuando se intenta insertar un usuario con un username que ya existe
     (violación de la restricción de unicidad).
     '''
@@ -143,16 +142,16 @@ def test_create_user_error(magic_mock_session, mock_e_orig, user):
     magic_mock_session.add.side_effect = IntegrityError(None, None, mock_e_orig) # cada vez que alguien llame a add, lanza esta exc
 
     with pytest.raises(UserAlreadyExists):
-        create_user(user, magic_mock_session)
+        create(user, magic_mock_session)
 
 
-def test_update_user_ok(magic_mock_session, user, user_put_patch, subtests):
-    '''Test que valida actualización exitosa (PUT/PATCH) de usuario existente'''
+def test_update_ok(magic_mock_session, user, user_put_patch, subtests):
+    '''Test que valida la operación CRUD update de un User en caso exitoso'''
  
     magic_mock_session.get.return_value = user
 
     user_id = 1
-    result = update_user(user_id, user_put_patch, magic_mock_session)
+    result = update(user_id, user_put_patch, magic_mock_session)
 
     with subtests.test('data validation'):
         if isinstance(user_put_patch, UserUpdate):
@@ -169,13 +168,13 @@ def test_update_user_ok(magic_mock_session, user, user_put_patch, subtests):
     
 
 
-def test_update_user_none(magic_mock_session, user_put_patch, subtests):
-    '''Test que valida que update_user devuelve None cuando el usuario no existe'''
+def test_update_not_found(magic_mock_session, user_put_patch, subtests):
+    '''Test que valida que update devuelve None cuando el usuario no existe'''
 
     magic_mock_session.get.return_value = None
 
     user_id = 1
-    result = update_user(user_id, user_put_patch, magic_mock_session)
+    result = update(user_id, user_put_patch, magic_mock_session)
 
     with subtests.test('begin called once'):
         magic_mock_session.begin.assert_called_once()
@@ -187,8 +186,8 @@ def test_update_user_none(magic_mock_session, user_put_patch, subtests):
         assert result is None
 
 
-def test_update_user_username_already_exists(magic_mock_session, mock_e_orig, user, user_put_patch, subtests):
-    '''Test que valida que update_user lanza UserAlreadyExists con username duplicado'''
+def test_update_username_already_exists(magic_mock_session, mock_e_orig, user, user_put_patch, subtests):
+    '''Test que valida que update lanza UserAlreadyExists con username duplicado'''
 
     magic_mock_session.get.return_value = user
 
@@ -205,7 +204,7 @@ def test_update_user_username_already_exists(magic_mock_session, mock_e_orig, us
 
     with subtests.test('UserAlreadyExists exception'):
         with pytest.raises(UserAlreadyExists):
-            update_user(1, user_put_patch, magic_mock_session)
+            update(1, user_put_patch, magic_mock_session)
 
     
     with subtests.test('commit not called'):
@@ -213,7 +212,7 @@ def test_update_user_username_already_exists(magic_mock_session, mock_e_orig, us
 
 
 
-def test_delete_user_ok(magic_mock_session, user, subtests):
+def test_delete_ok(magic_mock_session, user, subtests):
     '''
     Test unitario que prueba el borrado de
     un usuario registrado en el sistema
@@ -222,7 +221,7 @@ def test_delete_user_ok(magic_mock_session, user, subtests):
     magic_mock_session.get.return_value = user
 
     user_id = 1
-    result = delete_user(magic_mock_session, user_id)
+    result = delete(magic_mock_session, user_id)
     
     with subtests.test('get called once with'):
         magic_mock_session.get.assert_called_once_with(User, user_id)
@@ -235,7 +234,7 @@ def test_delete_user_ok(magic_mock_session, user, subtests):
         assert result is user 
 
 
-def test_delete_user_none(magic_mock_session, subtests):
+def test_delete_not_found(magic_mock_session, subtests):
     '''
     Test unitario que prueba el intento de borrado
     de un usuario no registrado en el sistema
@@ -244,7 +243,7 @@ def test_delete_user_none(magic_mock_session, subtests):
     magic_mock_session.get.return_value = None
 
     user_id = 111
-    result = delete_user(magic_mock_session, user_id)
+    result = delete(magic_mock_session, user_id)
 
     with subtests.test('get called once with'):
         magic_mock_session.get.assert_called_once_with(User, user_id)
