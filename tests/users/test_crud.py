@@ -18,17 +18,6 @@ def user():
 
 
 @pytest.fixture
-def magic_mock_session():
-    '''Mock de SQLAlchemy Session con spec para verificar métodos.'''
-    return MagicMock(spec=Session)
-
-
-@pytest.fixture
-def mock_session():
-    '''Mock de SQLAlchemy Session'''
-    return Mock()
-
-@pytest.fixture
 def mock_e_orig():
     '''
     Fixture que simula el atributo `diag` de `e.orig` para una excepción
@@ -170,8 +159,7 @@ def test_update_user_ok(magic_mock_session, user, user_put_patch, subtests):
             assert UserUpdate.model_validate(result) == user_put_patch
         else:
             for field in user_put_patch.model_fields_set:
-                user_patch = UserPatch.model_validate(result)
-                assert getattr(user_patch, field) == getattr(user_put_patch, field)
+                assert getattr(result, field) == getattr(user_put_patch, field)
 
     with subtests.test('begin called once'):
         magic_mock_session.begin.assert_called_once()
