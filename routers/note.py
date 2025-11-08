@@ -1,6 +1,6 @@
 from db import get_db
 from schemas.note import NoteRead, NoteCreate, NoteUpdate, NotePatch
-from crud.note import get_all, get_by_id, create, update, delete
+from repositories.note import get_all, get_by_id, create, update, delete
 from exceptions.note_exceptions import UserNotFound
 
 from fastapi import APIRouter, Depends, HTTPException, status

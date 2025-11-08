@@ -1,5 +1,5 @@
 import pytest
-from crud.user import get_all, get_by_id, create, update, delete
+from repositories.user import get_all, get_by_id, create, update, delete
 from unittest.mock import Mock
 from schemas.user import UserCreate, UserUpdate, UserPatch
 from models.user import User

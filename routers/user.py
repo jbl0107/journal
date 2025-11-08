@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 
-from crud.user import get_all, get_by_id, create, update, delete
+from repositories.user import get_all, get_by_id, create, update, delete
 from schemas.user import UserRead, UserCreate, UserUpdate, UserPatch
 from db import get_db
 from exceptions.user_exceptions import UserAlreadyExists

@@ -1,4 +1,4 @@
-from crud.note import get_all, get_by_id, create, update, delete
+from repositories.note import get_all, get_by_id, create, update, delete
 from models.note import Note
 from models.user import User
 from schemas.note import NoteCreate, NoteUpdate, NotePatch
