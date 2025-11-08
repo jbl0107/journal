@@ -1,4 +1,4 @@
-from sqlalchemy import select, insert
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from models.user import User
 from sqlalchemy.exc import IntegrityError
@@ -6,12 +6,12 @@ from schemas.user import UserCreate, UserUpdate, UserPatch
 from exceptions.user_exceptions import UserAlreadyExists
 
 
-def get_users(session:Session) -> list[User]:
+def get_all(session:Session) -> list[User]:
     '''Operación CRUD que obtiene todos los usuarios'''
     return session.scalars(select(User)).all()
 
 
-def get_user_by_id(session:Session, id:int) -> User | None:
+def get_by_id(session:Session, id:int) -> User | None:
     '''
     Operación CRUD que obtiene el usuario especificado por el parámetro id.
     Si no existe en BD, devuelve None
@@ -19,7 +19,7 @@ def get_user_by_id(session:Session, id:int) -> User | None:
     return session.get(User, id)
     
 
-def create_user(user: UserCreate, session:Session) -> User:
+def create(user: UserCreate, session:Session) -> User:
     '''
     Operación CRUD que inserta un registro en la tabla de Usuario.
     Posibles excepciones:
@@ -44,7 +44,7 @@ def create_user(user: UserCreate, session:Session) -> User:
 
 
 
-def update_user(id:int, user_update:UserUpdate | UserPatch, session:Session) -> User | None:
+def update(id:int, user_update:UserUpdate | UserPatch, session:Session) -> User | None:
     '''Operación CRUD que actualiza un usuario (PUT/PATCH)'''
 
     try:
@@ -66,7 +66,7 @@ def update_user(id:int, user_update:UserUpdate | UserPatch, session:Session) -> 
     return user
 
 
-def delete_user(session:Session, id:int) -> User | None:
+def delete(session:Session, id:int) -> User | None:
     '''
     Operación CRUD que borra el usuario con el id especificado. 
     Si no existe, devuelve None

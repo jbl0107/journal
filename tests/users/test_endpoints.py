@@ -1,15 +1,13 @@
 # Standard library
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import patch
 
 # Third party
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
 
 # Local application
 from main import app
-from db import get_db
 from models.user import User
 from schemas.user import UserRead, UserCreate
 from exceptions.user_exceptions import UserAlreadyExists
@@ -122,11 +120,11 @@ def valid_payload():
 
 
 
-## TESTS GET_ALL ##
+## TESTS GET_USERS ##
 
-def test_get_all_users_ok(user_list, subtests):
+def test_get_users_ok(user_list, subtests):
     '''
-    Test básico para asegurar que el endpoint `/users` responde 200 OK.
+    Test básico para asegurar que el endpoint get_users responde 200 OK.
     Valida que la respuesta contenga exactamente los datos esperados.
     '''
     
@@ -140,11 +138,11 @@ def test_get_all_users_ok(user_list, subtests):
     
 
 
-## TESTS GET_BY_ID ##
+## TESTS GET_USER ##
 
-def test_get_by_id_ok(user, subtests):
+def test_get_user_ok(user, subtests):
     '''
-    Test unitario básico para validar que el endpoint get_by_id responde 200 OK
+    Test unitario básico para validar que el endpoint get_user responde 200 OK
     cuando el usuario con el id especificado existe, además de validar los datos
     '''
     response = call_endpoint(client=client, method='get_by_id', base_url=BASE_URL, resource_id=user.id)
@@ -155,9 +153,9 @@ def test_get_by_id_ok(user, subtests):
         assert response.json() == UserRead.model_validate(user).model_dump()
 
 
-def test_get_by_id_not_found(mock_db_session):
+def test_get_user_not_found(mock_db_session):
     '''
-    Test unitario básico para validar que el endpoint get_by_id responde 404 NOT FOUND
+    Test unitario básico para validar que el endpoint get_user responde 404 NOT FOUND
     cuando no existe el usuario con el id especificado
     '''
     mock_db_session.get.return_value = None
@@ -166,11 +164,11 @@ def test_get_by_id_not_found(mock_db_session):
 
 
 
-## TESTS CREATE ##
+## TESTS CREATE_USER ##
 
-def test_create_ok(create_response, user_create, subtests):
+def test_create_user_ok(create_response, user_create, subtests):
     '''
-    Test unitario básico para validar que el endpoint create responde 201
+    Test unitario básico para validar que el endpoint create_user responde 201
     cuando el usuario ha sido creado y que los datos devueltos son correctos
     '''
 
@@ -186,10 +184,10 @@ def test_create_ok(create_response, user_create, subtests):
 
 
 
-@patch('routers.user.create_user')
-def test_create_username_exist_error(mock_create_user, user_create):
+@patch('routers.user.create')
+def test_create_user_username_exist_error(mock_create_user, user_create):
     '''
-    Test unitario que valida si el endpoint create devuelve un 400
+    Test unitario que valida si el endpoint create_user devuelve un 400
     cuando se intenta insertar un usuario con un username ya existente
     '''
 
@@ -201,7 +199,7 @@ def test_create_username_exist_error(mock_create_user, user_create):
 
 
 
-## TESTS UPDATE ##
+## TESTS UPDATE_USER ##
 
 @pytest.mark.parametrize(['method', 'payload'], [
     ('put', {"first_name": "Pepe",
@@ -215,8 +213,11 @@ def test_create_username_exist_error(mock_create_user, user_create):
         'password': 'asdf1234'
     })
     ],ids=['put', 'patch-partial'])
-def test_update_ok(user_magic, method, payload, subtests):
-    '''Test que valida que los endpoints PUT/PATCH devuelven codigo 200 y datos correctos'''
+def test_update_user_ok(user_magic, method, payload, subtests):
+    '''
+    Test que valida que los endpoints update_user y
+    partial_update_user devuelven codigo 200 y datos correctos
+    '''
 
     response = call_endpoint(client=client, method=method, base_url=BASE_URL, resource_id=user_magic.id, payload=payload)
 
@@ -234,10 +235,10 @@ def test_update_ok(user_magic, method, payload, subtests):
 
 
 @pytest.mark.parametrize('method', ['put', 'patch'])
-def test_update_not_found(magic_mock_session, valid_payload, method):
+def test_update_user_not_found(magic_mock_session, valid_payload, method):
     '''
-    Test unitario que valida si los endpoints put y patch devuelven un 404
-    cuando se intenta actualizar un usuario que no existe en el sistema
+    Test unitario que valida si los endpoints update_user y partial_update_user 
+    devuelven un 404 cuando se intenta actualizar un usuario que no existe en el sistema
     '''
 
     magic_mock_session.get.return_value = None
@@ -249,12 +250,12 @@ def test_update_not_found(magic_mock_session, valid_payload, method):
 
 
 #Parcheamos donde se USA el crud, no donde se define. Al terminar el test, patch restaura la fun OG
-@patch('routers.user.update_user') # ruta: paquete.modulo_donde_se_usa.nombre_funcion_crud
+@patch('routers.user.update') # ruta: paquete.modulo_donde_se_usa.nombre_funcion_crud
 @pytest.mark.parametrize('method', ['put', 'patch'])
-def test_update_username_exist_error(mock_update_user, valid_payload, method):
+def test_update_user_username_exist_error(mock_update_user, valid_payload, method):
     '''
-    Test unitario que valida si los endpoints put y patch devuelven un 400
-    cuando se intenta actualizar un usuario con un username ya existente
+    Test unitario que valida si los endpoints update_user y partial_update_user 
+    devuelven un 400 cuando se intenta actualizar un usuario con un username ya existente
     '''
     mock_update_user.side_effect = UserAlreadyExists(username = "existing_user") # mock_update es generado por patch automaticamente
 
@@ -265,7 +266,7 @@ def test_update_username_exist_error(mock_update_user, valid_payload, method):
 
 
 
-## TESTS VALIDATION FOR CREATE / UPDATE ##
+## TESTS VALIDATION FOR CREATE_USER / UPDATE_USER ##
 
 @pytest.mark.parametrize('method', ['post', 'put'])
 @pytest.mark.parametrize('field', ['first_name', 'last_name', 'username', 'age', 'password'])
@@ -401,10 +402,10 @@ def test_invalid_email(magic_mock_session, valid_payload, method, value, msg, su
     
 
 
-## TESTS DELETE ##
+## TESTS DELETE_USER ##
 
-def test_delete_ok(magic_mock_session):
-    '''Test básico para asegurar que el endpoint `/users/{id}` responde 204 OK'''
+def test_delete_user_ok(magic_mock_session):
+    '''Test básico para asegurar que el endpoint delete_user responde 204 OK'''
 
     magic_mock_session.get.return_value = User(first_name='Pepe', last_name = 'Ruiz', username = 'rai17', age  = 24, password='12345678')
     response = call_endpoint(client=client, method='delete', base_url=BASE_URL, resource_id=1)
@@ -412,9 +413,9 @@ def test_delete_ok(magic_mock_session):
     assert response.status_code == status.HTTP_204_NO_CONTENT
         
     
-def test_delete_not_found(magic_mock_session):
+def test_delete_user_not_found(magic_mock_session):
     '''
-    Test básico para asegurar que el endpoint `/users/{id}` responde 404 en caso
+    Test básico para asegurar que el endpoint delete_user responde 404 en caso
     de que el usuario con dicho ID no exista en el sistema
     '''
     magic_mock_session.get.return_value = None
